@@ -1,87 +1,143 @@
 # Canopy Workbench
 
-Monorepo for the Canopy Workbench platform, applications, services, schemas, and analytics engines.
+Full-stack catastrophe-analytics workbench: React SPA, Fastify API, BullMQ worker, and Scala pricing/risk engines.
 
-This repository now includes a **Phase 1 vertical slice**:
-- React/Vite frontend shell (`apps/web`)
-- Fastify control-plane API stub (`apps/api`)
-- BullMQ/Redis async worker (`services/worker`)
-- Dummy submit -> poll -> results workflow for end-to-end integration
+## Architecture
 
-## Current Scope (Phase 0 + Phase 1)
+```
+  Vercel                          EC2
+  ┌────────────────┐     ┌──────────────────────────────┐
+  │  React SPA     │     │  cloudflared (systemd)       │
+  │  (Vite build)  │────>│    → localhost:3001           │
+  └────────────────┘     │  ┌──────────────────────────┐ │
+                         │  │ docker-compose.prod.yml  │ │
+                         │  │  api      :3001          │ │
+                         │  │  worker   :4001          │ │
+                         │  │  postgres :5432          │ │
+                         │  │  redis    :6379          │ │
+                         │  │  minio    :9000          │ │
+                         │  └──────────────────────────┘ │
+                         └──────────────────────────────┘
+```
 
-- Local development infrastructure via Docker Compose (`postgres`, `redis`, `minio`)
-- Basic developer workflow commands via `Makefile`
-- Environment variable template (`.env.example`)
-- CI workflow skeleton (`.github/workflows/ci.yml`)
-- Architecture and decision-record documentation scaffolding
-- Frontend module chooser + workflow shell + run polling UI
-- API endpoints for `/api/v1/me`, `/workspaces`, `/uploads`, `/jobs`, `/runs`
-- Worker-driven dummy async run lifecycle (`queued -> validating -> running -> succeeded`)
+The SPA is deployed to Vercel. The backend runs on a single EC2 instance behind a Cloudflare quick tunnel for HTTPS.
 
-## Quick Start (Local Infra)
+## Repository Layout
 
-1. Initialize local env file:
+```
+apps/
+  api/              Fastify control-plane API (uploads, runs, jobs)
+  web/              React + Vite + Tailwind SPA
+services/
+  worker/           BullMQ worker — orchestrates Scala engines
+  scheduler/        (future) scheduled job runner
+scala/
+  canopy-data/              Shared data models
+  canopy-scenarios/         Scenario generation
+  canopy-inference-rainier/ Bayesian inference (Rainier)
+  canopy-engine-property/   Property Cat Pricing YLT engine
+  canopy-engine-trigger/    ILS Parametric Trigger engine
+  canopy-engine-portfolio/  Marginal Portfolio Impact engine
+  canopy-risk-metrics/      Risk metric calculations
+schemas/            JSON schemas and OpenAPI specs
+infra/
+  docker/           Dockerfile.api, Dockerfile.worker
+  scripts/          deploy.sh, setup-cloudflare-tunnel.sh
+test-data/          HURDAT2 datasets, golden outputs, sample inputs
+docs/               Architecture notes, ADRs
+```
 
-   ```bash
-   make setup
-   ```
+## Quick Start (Local Dev)
 
-2. Start local infrastructure:
+Prerequisites: Docker, Node 22, pnpm 9, JDK 8+, SBT 1.10.
 
-   ```bash
-   make dev-up
-   ```
+```bash
+# 1. Set up env
+cp .env.example .env
 
-   If Docker is unavailable, start a Redis instance another way and set `REDIS_URL` in `.env`.
+# 2. Start infra (Postgres, Redis, MinIO)
+make dev-up
 
-3. Start the Phase 1 services (separate terminals):
+# 3. Start services (separate terminals)
+make dev-api      # API on localhost:3001
+make dev-worker   # Worker on localhost:4001
+make dev-web      # SPA on localhost:5173
+```
 
-   ```bash
-   make dev-api
-   make dev-worker
-   make dev-web
-   ```
+Stop everything:
 
-4. Tail infra logs (optional):
+```bash
+make dev-down
+```
 
-   ```bash
-   make dev-logs
-   ```
+## Production Deployment
 
-5. Stop the stack:
+### EC2
 
-   ```bash
-   make dev-down
-   ```
+```bash
+git clone <repo-url> ~/canopy-workbench && cd ~/canopy-workbench
 
-## Local Services
+# Install cloudflared and start the tunnel (prints the *.trycloudflare.com URL)
+sudo ./infra/scripts/setup-cloudflare-tunnel.sh
 
-| Service | Purpose | Default Endpoint |
-| --- | --- | --- |
-| PostgreSQL | Primary relational store | `localhost:5432` |
-| Redis | Cache / queues / ephemeral state | `localhost:6379` |
-| MinIO | S3-compatible object storage | API `http://localhost:9000`, Console `http://localhost:9001` |
+# Build and start the stack
+./infra/scripts/deploy.sh --no-pull
+```
 
-MinIO credentials and other defaults are defined in `.env.example` and can be overridden in `.env`.
+Subsequent deploys:
 
-## Repository Layout (Top Level)
+```bash
+./infra/scripts/deploy.sh
+```
 
-- `apps/` user-facing applications (not part of Phase 0 scaffolding)
-- `services/` backend/background services
-- `scala/` Scala engines and analytics modules
-- `schemas/` API/result schemas and contracts
-- `infra/` infrastructure-related notes and future assets
-- `docs/` architecture notes, ADR template, phase tracking docs
+The compose file uses sensible defaults for all secrets — no `.env` file required. Override any var by exporting it before running deploy, or create an `.env.production` file next to the compose file.
 
-## Docs
+### Vercel
 
-- `docs/architecture-overview.md`
-- `docs/adr-template.md`
-- `docs/phase-0-notes.md`
+Import the repo into Vercel and add one env var:
 
-## Notes
+| Variable | Value |
+|----------|-------|
+| `VITE_API_BASE_URL` | The `*.trycloudflare.com` URL from the tunnel setup |
 
-- `Makefile` targets `lint`, `test`, and `build` are still placeholders.
-- CI jobs are intentionally skeletal and should be wired to repo-specific commands as the codebase matures.
-- The Phase 1 API/worker vertical slice requires Redis; Docker Compose is the default local path.
+Build settings are auto-detected from `apps/web/vercel.json`.
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Service health + Redis ping |
+| GET | `/api/v1/me` | Current user |
+| GET | `/api/v1/workspaces` | List workspaces |
+| GET/POST | `/api/v1/uploads` | List / create uploads |
+| GET | `/api/v1/jobs` | List jobs |
+| GET | `/api/v1/jobs/:jobId` | Job status |
+| POST | `/api/v1/runs` | Submit a run (generic) |
+| POST | `/api/v1/property-cat-pricing/runs` | Submit pricing run |
+| POST | `/api/v1/ils-parametric-trigger/runs` | Submit ILS trigger run |
+| GET | `/api/v1/runs/:runId` | Run status |
+| GET | `/api/v1/runs/:runId/events` | Run event stream |
+| GET | `/api/v1/runs/:runId/results` | Run results |
+
+## Scala Engines
+
+Built with SBT (`sbt compile`). The worker shells out to these via CLI:
+
+- **Property Cat Pricing** — `canopy-engine-property/runMain ...Hurdat2PropertyCatPricingYltCli`
+- **ILS Parametric Trigger** — `canopy-engine-trigger/runMain ...Hurdat2IlsTriggerCli`
+- **Marginal Portfolio Impact** — `canopy-engine-portfolio/runMain ...MarginalPortfolioImpactCli`
+
+Each engine reads a JSON `--input` file and writes results to stdout.
+
+## Makefile Targets
+
+```
+make help        Show all targets
+make setup       Create .env from .env.example
+make dev-up      Start Postgres, Redis, MinIO
+make dev-down    Stop infra containers
+make dev-api     Run API in dev mode
+make dev-worker  Run worker in dev mode
+make dev-web     Run SPA in dev mode
+make smoke-e2e   Run API+worker smoke test
+```
