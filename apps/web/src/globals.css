@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* shadcn HSL variables mapped from existing --cw-* palette */
+    --background: 216 25% 96%;       /* #f3f5f8 */
+    --foreground: 213 36% 14%;       /* #182330 */
+
+    --card: 0 0% 100%;               /* #ffffff */
+    --card-foreground: 213 36% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 213 36% 14%;
+
+    --primary: 209 88% 36%;          /* #0b5cab */
+    --primary-foreground: 213 60% 98%;
+
+    --secondary: 214 18% 95%;        /* #eef2f6 */
+    --secondary-foreground: 213 36% 14%;
+
+    --muted: 214 22% 97%;            /* #f7f9fb */
+    --muted-foreground: 216 14% 41%; /* #5b6778 */
+
+    --accent: 214 18% 95%;
+    --accent-foreground: 213 36% 14%;
+
+    --destructive: 6 80% 40%;        /* #b42318 */
+    --destructive-foreground: 0 80% 97%;
+
+    --success: 174 78% 26%;          /* #0f766e */
+    --success-foreground: 170 40% 94%;
+
+    --warning: 25 92% 36%;           /* #b54708 */
+    --warning-foreground: 30 100% 96%;
+
+    --border: 216 18% 85%;           /* #d8dee8 */
+    --input: 216 18% 80%;            /* #c7d0dc */
+    --ring: 209 88% 36%;
+
+    --radius: 0.5rem;
+
+    /* Legacy variables preserved for gradual migration */
+    --cw-bg: #f3f5f8;
+    --cw-bg-alt: #eef2f6;
+    --cw-surface: #ffffff;
+    --cw-surface-muted: #f7f9fb;
+    --cw-border: #d8dee8;
+    --cw-border-strong: #c7d0dc;
+    --cw-text: #182330;
+    --cw-text-muted: #5b6778;
+    --cw-primary: #0b5cab;
+    --cw-primary-weak: #eaf2fd;
+    --cw-success: #0f766e;
+    --cw-success-weak: #e8f6f4;
+    --cw-danger: #b42318;
+    --cw-danger-weak: #fef0f0;
+    --cw-warn: #b54708;
+    --cw-warn-weak: #fff6ed;
+    --cw-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 20px rgba(16, 24, 40, 0.04);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://canopy.workbench/contracts/results/v1/EventOutcome.schema.json",
+  "title": "EventOutcome",
+  "description": "Per-event loss and payout outcome from a simulated or historical event.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "pattern": "^evt_[a-z0-9]+$"
+    },
+    "simYear": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "occurrenceRank": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "peril": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "grossLoss": {
+      "type": "number",
+      "minimum": 0
+    },
+    "cededLoss": {
+      "type": "number",
+      "minimum": 0
+    },
+    "netLoss": {
+      "type": "number",
+      "minimum": 0
+    },
+    "bondPayout": {
+      "type": "number",
+      "minimum": 0
+    },
+    "triggered": {
+      "type": "boolean"
+    },
+    "eventWeight": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    }
+  },
+  "required": [
+    "eventId",
+    "simYear",
+    "grossLoss",
+    "netLoss"
+  ]
+}

@@ -1,0 +1,1329 @@
+{
+  "portfolioId": "pf_synthetic_100",
+  "name": "Synthetic Hurricane Belt Portfolio (Atlantic + Pacific)",
+  "currency": "USD",
+  "locations": [
+    {
+      "locationId": "loc_001",
+      "country": "US",
+      "region": "FL",
+      "latitude": 25.7811,
+      "longitude": -80.1863,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 13000000,
+      "deductible": 130000,
+      "limit": 9600000,
+      "occupancy": "Mixed-Use"
+    },
+    {
+      "locationId": "loc_002",
+      "country": "US",
+      "region": "FL",
+      "latitude": 26.1034,
+      "longitude": -80.147,
+      "perilSet": [
+        "WIND",
+        "HAIL"
+      ],
+      "tiv": 16000000,
+      "deductible": 320000,
+      "limit": 12700000,
+      "occupancy": "Commercial"
+    },
+    {
+      "locationId": "loc_003",
+      "country": "US",
+      "region": "FL",
+      "latitude": 26.7094,
+      "longitude": -80.0707,
+      "perilSet": [
+        "WIND",
+        "HAIL",
+        "FLOOD"
+      ],
+      "tiv": 26000000,
+      "deductible": 780000,
+      "limit": 21100000,
+      "occupancy": "Mixed-Use"
+    },
+    {
+      "locationId": "loc_004",
+      "country": "US",
+      "region": "FL",
+      "latitude": 27.9718,
+      "longitude": -82.4803,
+      "perilSet": [
+        "WIND",
+        "HAIL",
+        "FLOOD"
+      ],
+      "tiv": 29000000,
+      "deductible": 290000,
+      "limit": 26400000,
+      "occupancy": "Residential"
+    },
+    {
+      "locationId": "loc_005",
+      "country": "US",
+      "region": "FL",
+      "latitude": 28.5543,
+      "longitude": -81.3712,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 19000000,
+      "deductible": 380000,
+      "limit": 17800000,
+      "occupancy": "Hospitality"
+    },
+    {
+      "locationId": "loc_006",
+      "country": "US",
+      "region": "FL",
+      "latitude": 30.3448,
+      "longitude": -81.6521,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 34000000,
+      "deductible": 680000,
+      "limit": 27600000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_007",
+      "country": "US",
+      "region": "FL",
+      "latitude": 27.7569,
+      "longitude": -82.6311,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 3000000,
+      "deductible": 30000,
+      "limit": 2500000,
+      "occupancy": "Retail"
+    },
+    {
+      "locationId": "loc_008",
+      "country": "US",
+      "region": "FL",
+      "latitude": 26.6371,
+      "longitude": -81.8695,
+      "perilSet": [
+        "WIND",
+        "FLOOD"
+      ],
+      "tiv": 48000000,
+      "deductible": 480000,
+      "limit": 35300000,
+      "occupancy": "Healthcare"
+    },
+    {
+      "locationId": "loc_009",
+      "country": "US",
+      "region": "FL",
+      "latitude": 25.7716,
+      "longitude": -80.1093,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 42000000,
+      "deductible": 420000,
+      "limit": 36900000,
+      "occupancy": "Residential"
+    },
+    {
+      "locationId": "loc_010",
+      "country": "US",
+      "region": "FL",
+      "latitude": 28.0075,
+      "longitude": -80.6153,
+      "perilSet": [
+        "WIND",
+        "FLOOD",
+        "STORM_SURGE"
+      ],
+      "tiv": 39000000,
+      "deductible": 780000,
+      "limit": 29100000,
+      "occupancy": "Education"
+    },
+    {
+      "locationId": "loc_011",
+      "country": "US",
+      "region": "FL",
+      "latitude": 26.0134,
+      "longitude": -80.1491,
+      "perilSet": [
+        "WIND",
+        "HAIL"
+      ],
+      "tiv": 31000000,
+      "deductible": 1550000,
+      "limit": 26200000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_012",
+      "country": "US",
+      "region": "FL",
+      "latitude": 27.3229,
+      "longitude": -82.5471,
+      "perilSet": [
+        "WIND",
+        "HAIL"
+      ],
+      "tiv": 4000000,
+      "deductible": 40000,
+      "limit": 3200000,
+      "occupancy": "Hospitality"
+    },
+    {
+      "locationId": "loc_013",
+      "country": "US",
+      "region": "FL",
+      "latitude": 25.9301,
+      "longitude": -80.1098,
+      "perilSet": [
+        "WIND",
+        "FLOOD",
+        "STORM_SURGE"
+      ],
+      "tiv": 3000000,
+      "deductible": 30000,
+      "limit": 2400000,
+      "occupancy": "Mixed-Use"
+    },
+    {
+      "locationId": "loc_014",
+      "country": "US",
+      "region": "FL",
+      "latitude": 26.1857,
+      "longitude": -80.0962,
+      "perilSet": [
+        "WIND",
+        "FLOOD",
+        "STORM_SURGE"
+      ],
+      "tiv": 23000000,
+      "deductible": 1150000,
+      "limit": 18100000,
+      "occupancy": "Retail"
+    },
+    {
+      "locationId": "loc_015",
+      "country": "US",
+      "region": "FL",
+      "latitude": 29.6325,
+      "longitude": -81.4722,
+      "perilSet": [
+        "WIND",
+        "FLOOD"
+      ],
+      "tiv": 24000000,
+      "deductible": 1200000,
+      "limit": 21600000,
+      "occupancy": "Commercial"
+    },
+    {
+      "locationId": "loc_016",
+      "country": "US",
+      "region": "FL",
+      "latitude": 30.4255,
+      "longitude": -87.2066,
+      "perilSet": [
+        "WIND",
+        "HAIL"
+      ],
+      "tiv": 9000000,
+      "deductible": 180000,
+      "limit": 8100000,
+      "occupancy": "Education"
+    },
+    {
+      "locationId": "loc_017",
+      "country": "US",
+      "region": "FL",
+      "latitude": 25.4475,
+      "longitude": -80.472,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 27000000,
+      "deductible": 270000,
+      "limit": 24800000,
+      "occupancy": "Hospitality"
+    },
+    {
+      "locationId": "loc_018",
+      "country": "US",
+      "region": "FL",
+      "latitude": 26.4625,
+      "longitude": -80.058,
+      "perilSet": [
+        "WIND",
+        "HAIL",
+        "FLOOD"
+      ],
+      "tiv": 43000000,
+      "deductible": 1290000,
+      "limit": 38000000,
+      "occupancy": "Commercial"
+    },
+    {
+      "locationId": "loc_019",
+      "country": "US",
+      "region": "FL",
+      "latitude": 27.5235,
+      "longitude": -82.5645,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 26000000,
+      "deductible": 1300000,
+      "limit": 18700000,
+      "occupancy": "Education"
+    },
+    {
+      "locationId": "loc_020",
+      "country": "US",
+      "region": "FL",
+      "latitude": 28.0836,
+      "longitude": -82.3971,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 29000000,
+      "deductible": 1450000,
+      "limit": 21900000,
+      "occupancy": "Retail"
+    },
+    {
+      "locationId": "loc_021",
+      "country": "US",
+      "region": "TX",
+      "latitude": 29.7164,
+      "longitude": -95.3936,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 16000000,
+      "deductible": 800000,
+      "limit": 14900000,
+      "occupancy": "Education"
+    },
+    {
+      "locationId": "loc_022",
+      "country": "US",
+      "region": "TX",
+      "latitude": 29.2994,
+      "longitude": -94.7855,
+      "perilSet": [
+        "WIND",
+        "HAIL",
+        "FLOOD"
+      ],
+      "tiv": 38000000,
+      "deductible": 380000,
+      "limit": 29900000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_023",
+      "country": "US",
+      "region": "TX",
+      "latitude": 27.7804,
+      "longitude": -97.388,
+      "perilSet": [
+        "WIND",
+        "HAIL"
+      ],
+      "tiv": 47000000,
+      "deductible": 1410000,
+      "limit": 41600000,
+      "occupancy": "Commercial"
+    },
+    {
+      "locationId": "loc_024",
+      "country": "US",
+      "region": "TX",
+      "latitude": 26.1958,
+      "longitude": -97.709,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 49000000,
+      "deductible": 980000,
+      "limit": 40500000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_025",
+      "country": "US",
+      "region": "TX",
+      "latitude": 29.8632,
+      "longitude": -93.9204,
+      "perilSet": [
+        "WIND",
+        "FLOOD",
+        "STORM_SURGE"
+      ],
+      "tiv": 9000000,
+      "deductible": 90000,
+      "limit": 8200000,
+      "occupancy": "Residential"
+    },
+    {
+      "locationId": "loc_026",
+      "country": "US",
+      "region": "TX",
+      "latitude": 28.785,
+      "longitude": -95.2941,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 18000000,
+      "deductible": 540000,
+      "limit": 14700000,
+      "occupancy": "Education"
+    },
+    {
+      "locationId": "loc_027",
+      "country": "US",
+      "region": "TX",
+      "latitude": 27.6012,
+      "longitude": -97.2144,
+      "perilSet": [
+        "WIND",
+        "FLOOD",
+        "STORM_SURGE"
+      ],
+      "tiv": 25000000,
+      "deductible": 250000,
+      "limit": 22000000,
+      "occupancy": "Residential"
+    },
+    {
+      "locationId": "loc_028",
+      "country": "US",
+      "region": "TX",
+      "latitude": 29.5507,
+      "longitude": -95.1205,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 15000000,
+      "deductible": 300000,
+      "limit": 12100000,
+      "occupancy": "Retail"
+    },
+    {
+      "locationId": "loc_029",
+      "country": "US",
+      "region": "TX",
+      "latitude": 30.0764,
+      "longitude": -93.7612,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 25000000,
+      "deductible": 500000,
+      "limit": 23100000,
+      "occupancy": "Healthcare"
+    },
+    {
+      "locationId": "loc_030",
+      "country": "US",
+      "region": "TX",
+      "latitude": 28.4008,
+      "longitude": -96.3805,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 28000000,
+      "deductible": 1400000,
+      "limit": 25800000,
+      "occupancy": "Healthcare"
+    },
+    {
+      "locationId": "loc_031",
+      "country": "US",
+      "region": "LA",
+      "latitude": 29.9698,
+      "longitude": -90.0826,
+      "perilSet": [
+        "WIND",
+        "HAIL",
+        "FLOOD"
+      ],
+      "tiv": 38000000,
+      "deductible": 1900000,
+      "limit": 28500000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_032",
+      "country": "US",
+      "region": "LA",
+      "latitude": 29.9873,
+      "longitude": -90.1946,
+      "perilSet": [
+        "WIND",
+        "HAIL",
+        "FLOOD"
+      ],
+      "tiv": 18000000,
+      "deductible": 360000,
+      "limit": 16700000,
+      "occupancy": "Retail"
+    },
+    {
+      "locationId": "loc_033",
+      "country": "US",
+      "region": "LA",
+      "latitude": 29.9765,
+      "longitude": -90.2372,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 9000000,
+      "deductible": 180000,
+      "limit": 7700000,
+      "occupancy": "Education"
+    },
+    {
+      "locationId": "loc_034",
+      "country": "US",
+      "region": "LA",
+      "latitude": 30.4377,
+      "longitude": -91.1697,
+      "perilSet": [
+        "WIND",
+        "HAIL"
+      ],
+      "tiv": 40000000,
+      "deductible": 2000000,
+      "limit": 31600000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_035",
+      "country": "US",
+      "region": "LA",
+      "latitude": 29.3332,
+      "longitude": -89.3309,
+      "perilSet": [
+        "WIND",
+        "HAIL",
+        "FLOOD"
+      ],
+      "tiv": 36000000,
+      "deductible": 1800000,
+      "limit": 27300000,
+      "occupancy": "Commercial"
+    },
+    {
+      "locationId": "loc_036",
+      "country": "US",
+      "region": "LA",
+      "latitude": 30.2435,
+      "longitude": -92.018,
+      "perilSet": [
+        "WIND",
+        "FLOOD"
+      ],
+      "tiv": 31000000,
+      "deductible": 1550000,
+      "limit": 28600000,
+      "occupancy": "Residential"
+    },
+    {
+      "locationId": "loc_037",
+      "country": "US",
+      "region": "LA",
+      "latitude": 29.7536,
+      "longitude": -93.3853,
+      "perilSet": [
+        "WIND",
+        "FLOOD"
+      ],
+      "tiv": 17000000,
+      "deductible": 170000,
+      "limit": 16000000,
+      "occupancy": "Mixed-Use"
+    },
+    {
+      "locationId": "loc_038",
+      "country": "US",
+      "region": "LA",
+      "latitude": 30.4917,
+      "longitude": -90.4693,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 45000000,
+      "deductible": 1350000,
+      "limit": 36600000,
+      "occupancy": "Healthcare"
+    },
+    {
+      "locationId": "loc_039",
+      "country": "US",
+      "region": "LA",
+      "latitude": 29.1914,
+      "longitude": -89.082,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 34000000,
+      "deductible": 1700000,
+      "limit": 29000000,
+      "occupancy": "Commercial"
+    },
+    {
+      "locationId": "loc_040",
+      "country": "US",
+      "region": "LA",
+      "latitude": 30.0512,
+      "longitude": -89.9662,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 31000000,
+      "deductible": 310000,
+      "limit": 22500000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_041",
+      "country": "US",
+      "region": "NC",
+      "latitude": 34.2172,
+      "longitude": -77.9692,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 7000000,
+      "deductible": 350000,
+      "limit": 6500000,
+      "occupancy": "Hospitality"
+    },
+    {
+      "locationId": "loc_042",
+      "country": "US",
+      "region": "NC",
+      "latitude": 35.2286,
+      "longitude": -75.617,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 35000000,
+      "deductible": 1750000,
+      "limit": 30000000,
+      "occupancy": "Retail"
+    },
+    {
+      "locationId": "loc_043",
+      "country": "US",
+      "region": "NC",
+      "latitude": 33.9789,
+      "longitude": -77.9018,
+      "perilSet": [
+        "WIND",
+        "HAIL"
+      ],
+      "tiv": 5000000,
+      "deductible": 250000,
+      "limit": 4100000,
+      "occupancy": "Mixed-Use"
+    },
+    {
+      "locationId": "loc_044",
+      "country": "US",
+      "region": "NC",
+      "latitude": 35.0586,
+      "longitude": -76.6402,
+      "perilSet": [
+        "WIND",
+        "FLOOD"
+      ],
+      "tiv": 12000000,
+      "deductible": 240000,
+      "limit": 8900000,
+      "occupancy": "Healthcare"
+    },
+    {
+      "locationId": "loc_045",
+      "country": "US",
+      "region": "NC",
+      "latitude": 34.7027,
+      "longitude": -76.7532,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 18000000,
+      "deductible": 360000,
+      "limit": 13700000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_046",
+      "country": "US",
+      "region": "NC",
+      "latitude": 35.617,
+      "longitude": -75.4667,
+      "perilSet": [
+        "WIND",
+        "FLOOD"
+      ],
+      "tiv": 5000000,
+      "deductible": 150000,
+      "limit": 4400000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_047",
+      "country": "US",
+      "region": "NC",
+      "latitude": 34.0277,
+      "longitude": -77.9111,
+      "perilSet": [
+        "WIND",
+        "HAIL",
+        "FLOOD"
+      ],
+      "tiv": 8000000,
+      "deductible": 80000,
+      "limit": 7300000,
+      "occupancy": "Education"
+    },
+    {
+      "locationId": "loc_048",
+      "country": "US",
+      "region": "NC",
+      "latitude": 35.9826,
+      "longitude": -75.6691,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 28000000,
+      "deductible": 840000,
+      "limit": 24900000,
+      "occupancy": "Education"
+    },
+    {
+      "locationId": "loc_049",
+      "country": "US",
+      "region": "NC",
+      "latitude": 34.4043,
+      "longitude": -77.5536,
+      "perilSet": [
+        "WIND",
+        "FLOOD"
+      ],
+      "tiv": 4000000,
+      "deductible": 80000,
+      "limit": 3500000,
+      "occupancy": "Hospitality"
+    },
+    {
+      "locationId": "loc_050",
+      "country": "US",
+      "region": "NC",
+      "latitude": 33.9112,
+      "longitude": -78.0355,
+      "perilSet": [
+        "WIND",
+        "FLOOD",
+        "STORM_SURGE"
+      ],
+      "tiv": 22000000,
+      "deductible": 440000,
+      "limit": 17100000,
+      "occupancy": "Mixed-Use"
+    },
+    {
+      "locationId": "loc_051",
+      "country": "US",
+      "region": "SC",
+      "latitude": 32.7859,
+      "longitude": -79.9231,
+      "perilSet": [
+        "WIND",
+        "HAIL"
+      ],
+      "tiv": 28000000,
+      "deductible": 1400000,
+      "limit": 22000000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_052",
+      "country": "US",
+      "region": "SC",
+      "latitude": 33.7017,
+      "longitude": -78.8675,
+      "perilSet": [
+        "WIND",
+        "FLOOD"
+      ],
+      "tiv": 5000000,
+      "deductible": 150000,
+      "limit": 3900000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_053",
+      "country": "US",
+      "region": "SC",
+      "latitude": 32.4053,
+      "longitude": -80.6701,
+      "perilSet": [
+        "WIND",
+        "FLOOD",
+        "STORM_SURGE"
+      ],
+      "tiv": 46000000,
+      "deductible": 460000,
+      "limit": 32300000,
+      "occupancy": "Mixed-Use"
+    },
+    {
+      "locationId": "loc_054",
+      "country": "US",
+      "region": "SC",
+      "latitude": 33.853,
+      "longitude": -78.7047,
+      "perilSet": [
+        "WIND",
+        "HAIL",
+        "FLOOD"
+      ],
+      "tiv": 27000000,
+      "deductible": 810000,
+      "limit": 23400000,
+      "occupancy": "Hospitality"
+    },
+    {
+      "locationId": "loc_055",
+      "country": "US",
+      "region": "SC",
+      "latitude": 32.9244,
+      "longitude": -80.0438,
+      "perilSet": [
+        "WIND",
+        "HAIL"
+      ],
+      "tiv": 41000000,
+      "deductible": 1230000,
+      "limit": 30900000,
+      "occupancy": "Commercial"
+    },
+    {
+      "locationId": "loc_056",
+      "country": "US",
+      "region": "PR",
+      "latitude": 18.4644,
+      "longitude": -66.1256,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 24000000,
+      "deductible": 1200000,
+      "limit": 18600000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_057",
+      "country": "US",
+      "region": "PR",
+      "latitude": 18.2112,
+      "longitude": -66.5178,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 8000000,
+      "deductible": 400000,
+      "limit": 7500000,
+      "occupancy": "Residential"
+    },
+    {
+      "locationId": "loc_058",
+      "country": "US",
+      "region": "PR",
+      "latitude": 18.325,
+      "longitude": -65.651,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 16000000,
+      "deductible": 480000,
+      "limit": 11600000,
+      "occupancy": "Mixed-Use"
+    },
+    {
+      "locationId": "loc_059",
+      "country": "US",
+      "region": "PR",
+      "latitude": 18.0085,
+      "longitude": -66.6204,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 27000000,
+      "deductible": 540000,
+      "limit": 22300000,
+      "occupancy": "Residential"
+    },
+    {
+      "locationId": "loc_060",
+      "country": "US",
+      "region": "PR",
+      "latitude": 18.4338,
+      "longitude": -66.0522,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 33000000,
+      "deductible": 1650000,
+      "limit": 30900000,
+      "occupancy": "Education"
+    },
+    {
+      "locationId": "loc_061",
+      "country": "US",
+      "region": "USVI",
+      "latitude": 18.3456,
+      "longitude": -64.9135,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 31000000,
+      "deductible": 620000,
+      "limit": 22100000,
+      "occupancy": "Residential"
+    },
+    {
+      "locationId": "loc_062",
+      "country": "US",
+      "region": "USVI",
+      "latitude": 17.7444,
+      "longitude": -64.7466,
+      "perilSet": [
+        "WIND",
+        "HAIL",
+        "FLOOD"
+      ],
+      "tiv": 40000000,
+      "deductible": 800000,
+      "limit": 28700000,
+      "occupancy": "Residential"
+    },
+    {
+      "locationId": "loc_063",
+      "country": "MX",
+      "region": "QROO",
+      "latitude": 21.173,
+      "longitude": -86.8338,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 19000000,
+      "deductible": 570000,
+      "limit": 13500000,
+      "occupancy": "Commercial"
+    },
+    {
+      "locationId": "loc_064",
+      "country": "MX",
+      "region": "QROO",
+      "latitude": 20.6472,
+      "longitude": -87.0985,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 4000000,
+      "deductible": 120000,
+      "limit": 3100000,
+      "occupancy": "Mixed-Use"
+    },
+    {
+      "locationId": "loc_065",
+      "country": "MX",
+      "region": "QROO",
+      "latitude": 20.5079,
+      "longitude": -87.3915,
+      "perilSet": [
+        "WIND",
+        "HAIL"
+      ],
+      "tiv": 8000000,
+      "deductible": 240000,
+      "limit": 6500000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_066",
+      "country": "MX",
+      "region": "QROO",
+      "latitude": 18.5046,
+      "longitude": -88.2957,
+      "perilSet": [
+        "WIND",
+        "FLOOD",
+        "STORM_SURGE"
+      ],
+      "tiv": 5000000,
+      "deductible": 150000,
+      "limit": 3500000,
+      "occupancy": "Commercial"
+    },
+    {
+      "locationId": "loc_067",
+      "country": "MX",
+      "region": "YUC",
+      "latitude": 20.9705,
+      "longitude": -89.6139,
+      "perilSet": [
+        "WIND",
+        "HAIL"
+      ],
+      "tiv": 27000000,
+      "deductible": 270000,
+      "limit": 19900000,
+      "occupancy": "Education"
+    },
+    {
+      "locationId": "loc_068",
+      "country": "MX",
+      "region": "YUC",
+      "latitude": 21.0328,
+      "longitude": -89.6561,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 2000000,
+      "deductible": 20000,
+      "limit": 1700000,
+      "occupancy": "Hospitality"
+    },
+    {
+      "locationId": "loc_069",
+      "country": "MX",
+      "region": "YUC",
+      "latitude": 21.3038,
+      "longitude": -89.6743,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 20000000,
+      "deductible": 200000,
+      "limit": 15100000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_070",
+      "country": "US",
+      "region": "AL",
+      "latitude": 30.6736,
+      "longitude": -88.0213,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 46000000,
+      "deductible": 1380000,
+      "limit": 33200000,
+      "occupancy": "Hospitality"
+    },
+    {
+      "locationId": "loc_071",
+      "country": "US",
+      "region": "AL",
+      "latitude": 30.3949,
+      "longitude": -87.7018,
+      "perilSet": [
+        "WIND",
+        "HAIL",
+        "FLOOD"
+      ],
+      "tiv": 24000000,
+      "deductible": 1200000,
+      "limit": 21900000,
+      "occupancy": "Healthcare"
+    },
+    {
+      "locationId": "loc_072",
+      "country": "US",
+      "region": "AL",
+      "latitude": 30.258,
+      "longitude": -87.5464,
+      "perilSet": [
+        "WIND",
+        "HAIL"
+      ],
+      "tiv": 4000000,
+      "deductible": 40000,
+      "limit": 3500000,
+      "occupancy": "Healthcare"
+    },
+    {
+      "locationId": "loc_073",
+      "country": "US",
+      "region": "MS",
+      "latitude": 30.3739,
+      "longitude": -89.0718,
+      "perilSet": [
+        "WIND",
+        "HAIL"
+      ],
+      "tiv": 50000000,
+      "deductible": 1000000,
+      "limit": 47200000,
+      "occupancy": "Commercial"
+    },
+    {
+      "locationId": "loc_074",
+      "country": "US",
+      "region": "MS",
+      "latitude": 30.4199,
+      "longitude": -88.8947,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 18000000,
+      "deductible": 180000,
+      "limit": 15800000,
+      "occupancy": "Retail"
+    },
+    {
+      "locationId": "loc_075",
+      "country": "US",
+      "region": "MS",
+      "latitude": 30.3504,
+      "longitude": -89.3448,
+      "perilSet": [
+        "WIND",
+        "FLOOD"
+      ],
+      "tiv": 8000000,
+      "deductible": 400000,
+      "limit": 6600000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_076",
+      "country": "US",
+      "region": "GA",
+      "latitude": 31.9411,
+      "longitude": -81.0815,
+      "perilSet": [
+        "WIND",
+        "HAIL",
+        "FLOOD"
+      ],
+      "tiv": 37000000,
+      "deductible": 1110000,
+      "limit": 27400000,
+      "occupancy": "Mixed-Use"
+    },
+    {
+      "locationId": "loc_077",
+      "country": "US",
+      "region": "GA",
+      "latitude": 32.0782,
+      "longitude": -81.1061,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 28000000,
+      "deductible": 280000,
+      "limit": 23200000,
+      "occupancy": "Mixed-Use"
+    },
+    {
+      "locationId": "loc_078",
+      "country": "BS",
+      "region": "NP",
+      "latitude": 25.0685,
+      "longitude": -77.3632,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 23000000,
+      "deductible": 230000,
+      "limit": 16300000,
+      "occupancy": "Commercial"
+    },
+    {
+      "locationId": "loc_079",
+      "country": "BS",
+      "region": "NP",
+      "latitude": 26.5177,
+      "longitude": -78.7123,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 33000000,
+      "deductible": 1650000,
+      "limit": 24400000,
+      "occupancy": "Hospitality"
+    },
+    {
+      "locationId": "loc_080",
+      "country": "BS",
+      "region": "NP",
+      "latitude": 24.2567,
+      "longitude": -76.0158,
+      "perilSet": [
+        "WIND",
+        "FLOOD"
+      ],
+      "tiv": 38000000,
+      "deductible": 760000,
+      "limit": 33800000,
+      "occupancy": "Mixed-Use"
+    },
+    {
+      "locationId": "loc_081",
+      "country": "MX",
+      "region": "GRO",
+      "latitude": 16.8771,
+      "longitude": -99.8957,
+      "perilSet": [
+        "WIND",
+        "FLOOD"
+      ],
+      "tiv": 18000000,
+      "deductible": 540000,
+      "limit": 16400000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_082",
+      "country": "MX",
+      "region": "GRO",
+      "latitude": 17.6439,
+      "longitude": -101.5371,
+      "perilSet": [
+        "WIND",
+        "STORM_SURGE"
+      ],
+      "tiv": 35000000,
+      "deductible": 700000,
+      "limit": 26300000,
+      "occupancy": "Commercial"
+    },
+    {
+      "locationId": "loc_083",
+      "country": "MX",
+      "region": "JAL",
+      "latitude": 20.6938,
+      "longitude": -105.2565,
+      "perilSet": [
+        "WIND",
+        "FLOOD"
+      ],
+      "tiv": 27000000,
+      "deductible": 1350000,
+      "limit": 24200000,
+      "occupancy": "Healthcare"
+    },
+    {
+      "locationId": "loc_084",
+      "country": "MX",
+      "region": "JAL",
+      "latitude": 19.7638,
+      "longitude": -105.2038,
+      "perilSet": [
+        "WIND",
+        "HAIL"
+      ],
+      "tiv": 16000000,
+      "deductible": 800000,
+      "limit": 14200000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_085",
+      "country": "MX",
+      "region": "SIN",
+      "latitude": 23.2437,
+      "longitude": -106.3943,
+      "perilSet": [
+        "WIND",
+        "FLOOD",
+        "STORM_SURGE"
+      ],
+      "tiv": 22000000,
+      "deductible": 220000,
+      "limit": 16500000,
+      "occupancy": "Hospitality"
+    },
+    {
+      "locationId": "loc_086",
+      "country": "MX",
+      "region": "SIN",
+      "latitude": 24.8285,
+      "longitude": -107.3879,
+      "perilSet": [
+        "WIND",
+        "FLOOD",
+        "STORM_SURGE"
+      ],
+      "tiv": 48000000,
+      "deductible": 2400000,
+      "limit": 43000000,
+      "occupancy": "Retail"
+    },
+    {
+      "locationId": "loc_087",
+      "country": "US",
+      "region": "HI",
+      "latitude": 21.2857,
+      "longitude": -157.8625,
+      "perilSet": [
+        "WIND",
+        "FLOOD"
+      ],
+      "tiv": 25000000,
+      "deductible": 1250000,
+      "limit": 22400000,
+      "occupancy": "Healthcare"
+    },
+    {
+      "locationId": "loc_088",
+      "country": "US",
+      "region": "HI",
+      "latitude": 19.7303,
+      "longitude": -155.0696,
+      "perilSet": [
+        "WIND"
+      ],
+      "tiv": 37000000,
+      "deductible": 740000,
+      "limit": 31000000,
+      "occupancy": "Healthcare"
+    }
+  ]
+}

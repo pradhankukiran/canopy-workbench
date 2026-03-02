@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (placeholder)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Lint placeholder
+        run: |
+          echo "Phase 0 CI skeleton"
+          echo "TODO: add repo-specific lint commands"
+
+  test:
+    name: Test (placeholder)
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Test placeholder
+        run: |
+          echo "Phase 0 CI skeleton"
+          echo "TODO: add repo-specific test commands"
+
+  build:
+    name: Build (placeholder)
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build placeholder
+        run: |
+          echo "Phase 0 CI skeleton"
+          echo "TODO: add repo-specific build commands"

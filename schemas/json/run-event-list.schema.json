@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://canopy.workbench/contracts/json/v1/run-event-list.schema.json",
+  "title": "RunEventList",
+  "description": "Paginated list of run lifecycle/progress events.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "runId": {
+      "type": "string",
+      "pattern": "^run_[a-z0-9]+$"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "./run-event.schema.json"
+      }
+    },
+    "page": {
+      "$ref": "#/$defs/Page"
+    }
+  },
+  "required": [
+    "runId",
+    "items",
+    "page"
+  ],
+  "$defs": {
+    "Page": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "nextCursor": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "count"
+      ]
+    }
+  }
+}

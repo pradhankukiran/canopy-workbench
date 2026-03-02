@@ -1,0 +1,635 @@
+openapi: 3.1.0
+info:
+  title: Canopy Workbench API
+  version: 1.0.0
+  summary: Phase 0 contract scaffolding for the Canopy Workbench control plane
+  description: >
+    MVP API contract skeleton covering identity, workspaces, uploads, jobs, and runs.
+    Schemas are intentionally minimal and expected to evolve within the v1 major line.
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+servers:
+  - url: /api/v1
+    description: Version 1 API base path
+tags:
+  - name: Identity
+  - name: Workspaces
+  - name: Uploads
+  - name: Jobs
+  - name: Runs
+security:
+  - bearerAuth: []
+paths:
+  /me:
+    get:
+      tags: [Identity]
+      operationId: getMe
+      summary: Get current authenticated principal
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /workspaces:
+    get:
+      tags: [Workspaces]
+      operationId: listWorkspaces
+      summary: List workspaces visible to the caller
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Workspace page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceList'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags: [Workspaces]
+      operationId: createWorkspace
+      summary: Create a workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkspaceRequest'
+      responses:
+        '201':
+          description: Workspace created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workspace'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /uploads:
+    get:
+      tags: [Uploads]
+      operationId: listUploads
+      summary: List uploads
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - name: workspaceId
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^ws_[a-z0-9]+$'
+      responses:
+        '200':
+          description: Upload page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadList'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags: [Uploads]
+      operationId: createUpload
+      summary: Create an upload session (metadata + pre-signed destination)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUploadRequest'
+      responses:
+        '201':
+          description: Upload session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Upload'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /jobs:
+    get:
+      tags: [Jobs]
+      operationId: listJobs
+      summary: List background jobs
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - name: workspaceId
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^ws_[a-z0-9]+$'
+        - name: state
+          in: query
+          required: false
+          schema:
+            $ref: ../json/job-state.enum.schema.json
+      responses:
+        '200':
+          description: Job page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobList'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /jobs/{jobId}:
+    get:
+      tags: [Jobs]
+      operationId: getJob
+      summary: Get job state
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: Job record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '404':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /runs:
+    get:
+      tags: [Runs]
+      operationId: listRuns
+      summary: List model runs
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - name: workspaceId
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^ws_[a-z0-9]+$'
+      responses:
+        '200':
+          description: Run page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunList'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags: [Runs]
+      operationId: createRun
+      summary: Submit a new run request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../json/run-request.schema.json
+      responses:
+        '202':
+          description: Run accepted and job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunSubmission'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /property-cat-pricing/runs:
+    post:
+      tags: [Runs]
+      operationId: createPropertyCatPricingRun
+      summary: Submit a Property-Cat Pricing run request
+      description: >
+        Alias endpoint for module-specific clients. The backend enforces `analysisType=pricing`
+        and routes the request through the shared run queue/orchestration pipeline.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../json/run-request.schema.json
+      responses:
+        '202':
+          description: Run accepted and job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunSubmission'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /ils-parametric-trigger/runs:
+    post:
+      tags: [Runs]
+      operationId: createIlsParametricTriggerRun
+      summary: Submit an ILS Parametric Trigger run request
+      description: >
+        Alias endpoint for module-specific clients. The backend enforces `analysisType=sensitivity`
+        and routes the request through the shared run queue/orchestration pipeline.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../json/run-request.schema.json
+      responses:
+        '202':
+          description: Run accepted and job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunSubmission'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /marginal-portfolio-impact/runs:
+    post:
+      tags: [Runs]
+      operationId: createMarginalPortfolioImpactRun
+      summary: Submit a Marginal Portfolio Impact run request
+      description: >
+        Alias endpoint for module-specific clients. The backend enforces `analysisType=risk`
+        and routes the request through the shared run queue/orchestration pipeline.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../json/run-request.schema.json
+      responses:
+        '202':
+          description: Run accepted and job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunSubmission'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /runs/{runId}:
+    get:
+      tags: [Runs]
+      operationId: getRun
+      summary: Get run metadata and state
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: Run record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '404':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /runs/{runId}/events:
+    get:
+      tags: [Runs]
+      operationId: listRunEvents
+      summary: List lifecycle and progress events for a run
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Run event page
+          content:
+            application/json:
+              schema:
+                $ref: ../json/run-event-list.schema.json
+        '404':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /runs/{runId}/results:
+    get:
+      tags: [Runs]
+      operationId: getRunResults
+      summary: Fetch resolved results for a completed run
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: Result bundle
+          content:
+            application/json:
+              schema:
+                $ref: ../results/PosteriorBundle.schema.json
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^job_[a-z0-9]+$'
+    RunId:
+      name: runId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^run_[a-z0-9]+$'
+
+  responses:
+    Error:
+      description: Error response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      additionalProperties: false
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+            requestId:
+              type: string
+              pattern: '^req_[a-z0-9]+$'
+          required: [code, message]
+      required: [error]
+
+    Page:
+      type: object
+      additionalProperties: false
+      properties:
+        nextCursor:
+          type: string
+        count:
+          type: integer
+          minimum: 0
+      required: [count]
+
+    Me:
+      type: object
+      additionalProperties: false
+      properties:
+        userId:
+          type: string
+          pattern: '^usr_[a-z0-9]+$'
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        defaultWorkspaceId:
+          type: string
+          pattern: '^ws_[a-z0-9]+$'
+      required: [userId, email]
+
+    Workspace:
+      type: object
+      additionalProperties: false
+      properties:
+        workspaceId:
+          type: string
+          pattern: '^ws_[a-z0-9]+$'
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        createdByUserId:
+          type: string
+          pattern: '^usr_[a-z0-9]+$'
+      required: [workspaceId, name]
+
+    WorkspaceList:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Workspace'
+        page:
+          $ref: '#/components/schemas/Page'
+      required: [items, page]
+
+    CreateWorkspaceRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+      required: [name]
+
+    Upload:
+      type: object
+      additionalProperties: false
+      properties:
+        uploadId:
+          type: string
+          pattern: '^upl_[a-z0-9]+$'
+        workspaceId:
+          type: string
+          pattern: '^ws_[a-z0-9]+$'
+        filename:
+          type: string
+        contentType:
+          type: string
+        bytes:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum: [pending, uploading, uploaded, parsed, failed]
+        storagePath:
+          type: string
+        uploadUrl:
+          type: string
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+      required: [uploadId, workspaceId, filename, status]
+
+    UploadList:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Upload'
+        page:
+          $ref: '#/components/schemas/Page'
+      required: [items, page]
+
+    CreateUploadRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        workspaceId:
+          type: string
+          pattern: '^ws_[a-z0-9]+$'
+        filename:
+          type: string
+          minLength: 1
+        contentType:
+          type: string
+          minLength: 1
+        bytes:
+          type: integer
+          minimum: 0
+        sizeBytes:
+          type: integer
+          minimum: 0
+        kind:
+          type: string
+          enum: [property-portfolio]
+        contentText:
+          type: string
+      required: [workspaceId, filename, contentType, kind]
+
+    Job:
+      type: object
+      additionalProperties: false
+      properties:
+        jobId:
+          type: string
+          pattern: '^job_[a-z0-9]+$'
+        runId:
+          type: string
+          pattern: '^run_[a-z0-9]+$'
+        workspaceId:
+          type: string
+          pattern: '^ws_[a-z0-9]+$'
+        state:
+          $ref: ../json/job-state.enum.schema.json
+        progress:
+          type: number
+          minimum: 0
+          maximum: 1
+        submittedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        error:
+          $ref: '#/components/schemas/Error'
+      required: [jobId, state]
+
+    JobList:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Job'
+        page:
+          $ref: '#/components/schemas/Page'
+      required: [items, page]
+
+    Run:
+      type: object
+      additionalProperties: false
+      properties:
+        runId:
+          type: string
+          pattern: '^run_[a-z0-9]+$'
+        workspaceId:
+          type: string
+          pattern: '^ws_[a-z0-9]+$'
+        candidateDealId:
+          type: string
+          pattern: '^deal_[a-z0-9]+$'
+        jobId:
+          type: string
+          pattern: '^job_[a-z0-9]+$'
+        state:
+          $ref: ../json/job-state.enum.schema.json
+        analysisType:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        resultAvailable:
+          type: boolean
+      required: [runId, workspaceId, state]
+
+    RunList:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Run'
+        page:
+          $ref: '#/components/schemas/Page'
+      required: [items, page]
+
+    RunSubmission:
+      type: object
+      additionalProperties: false
+      properties:
+        run:
+          $ref: '#/components/schemas/Run'
+        job:
+          $ref: '#/components/schemas/Job'
+      required: [run, job]

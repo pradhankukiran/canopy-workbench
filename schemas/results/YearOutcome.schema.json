@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://canopy.workbench/contracts/results/v1/YearOutcome.schema.json",
+  "title": "YearOutcome",
+  "description": "Annual aggregate outcome with optional event breakdown.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "yearIndex": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "eventCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "aggregateGrossLoss": {
+      "type": "number",
+      "minimum": 0
+    },
+    "aggregateCededLoss": {
+      "type": "number",
+      "minimum": 0
+    },
+    "aggregateNetLoss": {
+      "type": "number",
+      "minimum": 0
+    },
+    "bondExhausted": {
+      "type": "boolean"
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "./EventOutcome.schema.json"
+      }
+    }
+  },
+  "required": [
+    "yearIndex",
+    "eventCount",
+    "aggregateGrossLoss",
+    "aggregateNetLoss"
+  ]
+}

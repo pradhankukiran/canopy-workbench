@@ -1,0 +1,24 @@
+{
+  "name": "@canopy/api",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Phase 1 async control-plane API service",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "pnpm exec tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "typecheck": "pnpm exec tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.1.0",
+    "bullmq": "^5.63.0",
+    "fastify": "^5.2.1",
+    "ioredis": "^5.4.2",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.20.4",
+    "@types/pg": "^8.15.6"
+  }
+}

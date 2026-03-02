@@ -1,0 +1,283 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://canopy.workbench/contracts/json/v1/run-request.schema.json",
+  "title": "RunRequest",
+  "description": "Request payload for launching a pricing/risk run.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "workspaceId": {
+      "type": "string",
+      "pattern": "^ws_[a-z0-9]+$"
+    },
+    "candidateDealId": {
+      "type": "string",
+      "pattern": "^deal_[a-z0-9]+$"
+    },
+    "candidateDeal": {
+      "$ref": "./candidate-deal.schema.json"
+    },
+    "analysisType": {
+      "type": "string",
+      "enum": [
+        "pricing",
+        "risk",
+        "sensitivity"
+      ],
+      "default": "pricing"
+    },
+    "engineProfile": {
+      "type": "string",
+      "enum": [
+        "fast",
+        "standard",
+        "full"
+      ],
+      "default": "standard"
+    },
+    "randomSeed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "outputOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "includeYearOutcomes": {
+          "type": "boolean",
+          "default": false
+        },
+        "includeEventOutcomes": {
+          "type": "boolean",
+          "default": false
+        },
+        "includePosteriorSamples": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "moduleParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "marginalPortfolioImpact": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "baselinePortfolioId": {
+              "type": "string",
+              "pattern": "^pf_[a-z0-9]+$"
+            },
+            "candidateDealName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "candidateDealLimit": {
+              "type": "number",
+              "minimum": 0
+            },
+            "tailCurve": {
+              "type": "string",
+              "enum": [
+                "oep",
+                "aep"
+              ]
+            },
+            "tailMetric": {
+              "type": "string",
+              "enum": [
+                "var",
+                "tvar"
+              ]
+            },
+            "tailReturnPeriodYears": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "returnPeriodsYears": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "uniqueItems": true
+            },
+            "candidateParticipationPct": {
+              "type": "number",
+              "minimum": 0
+            },
+            "includeTailRiskComparison": {
+              "type": "boolean"
+            }
+          }
+        },
+        "propertyCatPricing": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "currency": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "returnPeriodsYears": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "uniqueItems": true
+            },
+            "yltSampleCount": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "simulatedYears": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sampleYearCount": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "yltRowLimit": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "lossBasis": {
+              "type": "string",
+              "enum": [
+                "gross",
+                "net",
+                "ceded"
+              ]
+            },
+            "includeGrossNetBreakout": {
+              "type": "boolean"
+            },
+            "includeSummaryPercentiles": {
+              "type": "boolean"
+            },
+            "propertyPortfolioPath": {
+              "type": "string",
+              "minLength": 1
+            },
+            "hurdat2Path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "useScalaEngine": {
+              "type": "boolean"
+            },
+            "scalaEngineTimeoutMs": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "includeYltSummaryTable": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "ilsParametricTrigger": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "currency": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "triggerDefinitionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "triggerMetric": {
+              "type": "string",
+              "minLength": 1
+            },
+            "triggerIndexName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "regionCode": {
+              "type": "string",
+              "minLength": 1
+            },
+            "perilCode": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attachmentThreshold": {
+              "type": "number"
+            },
+            "exhaustionThreshold": {
+              "type": "number"
+            },
+            "payoutCurve": {
+              "type": "string",
+              "enum": [
+                "linear",
+                "binary",
+                "stepped"
+              ]
+            },
+            "simulationCount": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "includeEventLevelOutcomes": {
+              "type": "boolean"
+            },
+            "hurdat2Path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "useScalaEngine": {
+              "type": "boolean"
+            },
+            "scalaEngineTimeoutMs": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "returnPeriodsYears": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "uniqueItems": true
+            },
+            "includeTriggerSummaryTable": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        }
+      }
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "requestedByUserId": {
+      "type": "string",
+      "pattern": "^usr_[a-z0-9]+$"
+    }
+  },
+  "required": [
+    "workspaceId"
+  ],
+  "anyOf": [
+    {
+      "required": [
+        "candidateDealId"
+      ]
+    },
+    {
+      "required": [
+        "candidateDeal"
+      ]
+    }
+  ]
+}

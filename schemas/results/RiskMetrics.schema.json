@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://canopy.workbench/contracts/results/v1/RiskMetrics.schema.json",
+  "title": "RiskMetrics",
+  "description": "Summary risk metrics for a run.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "expectedLoss": {
+      "type": "number",
+      "minimum": 0
+    },
+    "expectedLossRate": {
+      "type": "number",
+      "minimum": 0
+    },
+    "stdDevLoss": {
+      "type": "number",
+      "minimum": 0
+    },
+    "attachmentProbability": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "exhaustionProbability": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "var99": {
+      "type": "number",
+      "minimum": 0
+    },
+    "tvar99": {
+      "type": "number",
+      "minimum": 0
+    },
+    "oep": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ReturnPeriodPoint"
+      }
+    },
+    "aep": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ReturnPeriodPoint"
+      }
+    }
+  },
+  "required": [
+    "expectedLoss",
+    "attachmentProbability",
+    "exhaustionProbability"
+  ],
+  "$defs": {
+    "ReturnPeriodPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "returnPeriodYears": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "grossLoss": {
+          "type": "number",
+          "minimum": 0
+        },
+        "netLoss": {
+          "type": "number",
+          "minimum": 0
+        },
+        "bondPayout": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "returnPeriodYears"
+      ]
+    }
+  }
+}

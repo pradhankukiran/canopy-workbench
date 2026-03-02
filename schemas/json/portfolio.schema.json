@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://canopy.workbench/contracts/json/v1/portfolio.schema.json",
+  "title": "Portfolio",
+  "description": "Stored portfolio record wrapper used by the workbench API.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "portfolioId": {
+      "type": "string",
+      "pattern": "^pf_[a-z0-9]+$"
+    },
+    "workspaceId": {
+      "type": "string",
+      "pattern": "^ws_[a-z0-9]+$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "property-portfolio"
+      ]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sourceUploadId": {
+      "type": "string",
+      "pattern": "^upl_[a-z0-9]+$"
+    },
+    "propertyPortfolio": {
+      "$ref": "./property-portfolio.schema.json"
+    }
+  },
+  "required": [
+    "portfolioId",
+    "workspaceId",
+    "kind",
+    "propertyPortfolio"
+  ]
+}

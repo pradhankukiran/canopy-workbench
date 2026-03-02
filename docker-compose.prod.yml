@@ -1,0 +1,145 @@
+name: canopy-workbench-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: canopy-prod-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-canopy}
+      POSTGRES_USER: ${POSTGRES_USER:-canopy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-canopy_prod}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-canopy} -d ${POSTGRES_DB:-canopy}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - canopy
+
+  redis:
+    image: redis:7-alpine
+    container_name: canopy-prod-redis
+    restart: unless-stopped
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--requirepass",
+        "${REDIS_PASSWORD:-canopy_prod}",
+      ]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-canopy_prod}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - canopy
+
+  minio:
+    image: minio/minio:latest
+    container_name: canopy-prod-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin_prod}
+    volumes:
+      - minio_data:/data
+    networks:
+      - canopy
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+    container_name: canopy-prod-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      API_HOST: "0.0.0.0"
+      API_PORT: "3001"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-canopy}:${POSTGRES_PASSWORD:-canopy_prod}@postgres:5432/${POSTGRES_DB:-canopy}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-canopy_prod}@redis:6379/0
+      CANOPY_REDIS_PREFIX: ${CANOPY_REDIS_PREFIX:-canopy:phase1}
+      CANOPY_RUN_QUEUE: ${CANOPY_RUN_QUEUE:-canopy_phase1_runs}
+      CANOPY_UPLOAD_DIR: /app/target/uploads
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin_prod}
+      S3_BUCKET: ${S3_BUCKET:-canopy-prod}
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - upload_data:/app/target/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3001/health').then(r=>{if(!r.ok)throw 1}).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - canopy
+
+  worker:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.worker
+    container_name: canopy-prod-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      WORKER_PORT: "4001"
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+      WORKER_STEP_DELAY_MS: ${WORKER_STEP_DELAY_MS:-350}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-canopy}:${POSTGRES_PASSWORD:-canopy_prod}@postgres:5432/${POSTGRES_DB:-canopy}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-canopy_prod}@redis:6379/0
+      CANOPY_REDIS_PREFIX: ${CANOPY_REDIS_PREFIX:-canopy:phase1}
+      CANOPY_RUN_QUEUE: ${CANOPY_RUN_QUEUE:-canopy_phase1_runs}
+      CANOPY_UPLOAD_DIR: /app/target/uploads
+      WORKER_PROPERTY_PRICING_SCALA_CLI_COMMAND: >-
+        sbt -batch -error "canopy-engine-property/runMain canopy.engine.property.Hurdat2PropertyCatPricingYltCli --input {input}"
+      WORKER_PROPERTY_PRICING_SCALA_CLI_CWD: /app
+      WORKER_PROPERTY_PRICING_SCALA_CLI_TIMEOUT_MS: "120000"
+      WORKER_ILS_SCALA_CLI_COMMAND: >-
+        sbt -batch -error "canopy-engine-trigger/runMain canopy.engine.trigger.Hurdat2IlsTriggerCli --input {input}"
+      WORKER_ILS_SCALA_CLI_CWD: /app
+      WORKER_ILS_SCALA_CLI_TIMEOUT_MS: "120000"
+      WORKER_MPI_SCALA_CLI_COMMAND: >-
+        sbt -batch -error "canopy-engine-portfolio/runMain canopy.engine.portfolio.MarginalPortfolioImpactCli --input {input}"
+      WORKER_MPI_SCALA_CLI_CWD: /app
+      WORKER_MPI_SCALA_CLI_TIMEOUT_MS: "120000"
+    volumes:
+      - upload_data:/app/target/uploads
+    networks:
+      - canopy
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  upload_data:
+
+networks:
+  canopy:
+    driver: bridge

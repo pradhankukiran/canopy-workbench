@@ -1,0 +1,11 @@
+{
+  "name": "@canopy/scheduler",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Phase 0 placeholder for the future scheduler service.",
+  "scripts": {
+    "dev": "echo \"Phase 0 placeholder: scheduler runtime not scaffolded yet\"",
+    "build": "echo \"Phase 0 placeholder: scheduler build not configured yet\"",
+    "typecheck": "pnpm exec tsc -p tsconfig.json --noEmit"
+  }
+}

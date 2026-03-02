@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://canopy.workbench/contracts/json/v1/run-event.schema.json",
+  "title": "RunEvent",
+  "description": "Lifecycle/progress event emitted for a model run.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "runEventId": {
+      "type": "string",
+      "pattern": "^rnev_[a-z0-9]+$"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^run_[a-z0-9]+$"
+    },
+    "jobId": {
+      "type": "string",
+      "pattern": "^job_[a-z0-9]+$"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "submitted",
+        "queued",
+        "started",
+        "progress",
+        "stage",
+        "artifact",
+        "completed",
+        "failed",
+        "canceled"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "default": "info"
+    },
+    "state": {
+      "$ref": "./job-state.enum.schema.json"
+    },
+    "stage": {
+      "type": "string"
+    },
+    "moduleKey": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "progress": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "details": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "runEventId",
+    "runId",
+    "sequence",
+    "createdAt",
+    "eventType"
+  ]
+}

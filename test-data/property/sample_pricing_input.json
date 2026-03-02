@@ -1,0 +1,20 @@
+{
+  "runId": "run_pricingdemo1",
+  "workspaceId": "ws_canopydemo1",
+  "candidateDealId": "deal_demo_pricing1",
+  "analysisType": "pricing",
+  "engineProfile": "standard",
+  "randomSeed": 23,
+  "moduleParameters": {
+    "propertyCatPricing": {
+      "simulatedYears": 250,
+      "returnPeriodsYears": [10, 20, 50, 100],
+      "yltRowLimit": 25,
+      "lossBasis": "net",
+      "includeGrossNetBreakout": true,
+      "includeSummaryPercentiles": true,
+      "hurdat2Path": "../hurdat2/sample_atlantic_subset.hurdat2",
+      "propertyPortfolioPath": "./sample_property_portfolio.json"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "canopy-workbench",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev:web": "pnpm --filter @canopy/web dev",
+    "dev:api": "pnpm --filter @canopy/api dev",
+    "dev:worker": "pnpm --filter @canopy/worker dev",
+    "dev:scheduler": "pnpm --filter @canopy/scheduler dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

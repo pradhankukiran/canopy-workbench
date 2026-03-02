@@ -1,0 +1,19 @@
+{
+  "runId": "run_hurdat2demo1",
+  "workspaceId": "ws_canopydemo1",
+  "hurdat2Path": "sample_atlantic_subset.hurdat2",
+  "randomSeed": 17,
+  "moduleParameters": {
+    "ilsParametricTrigger": {
+      "triggerIndexName": "maxWindKt",
+      "regionCode": "GOM",
+      "perilCode": "TC",
+      "attachmentThreshold": 74,
+      "exhaustionThreshold": 120,
+      "payoutCurve": "linear",
+      "simulationCount": 25,
+      "includeEventLevelOutcomes": true,
+      "notional": 1000000
+    }
+  }
+}

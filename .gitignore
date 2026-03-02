@@ -1,0 +1,46 @@
+# Environment
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Node / frontend
+node_modules/
+dist/
+.next/
+.turbo/
+coverage/
+
+# Python
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+
+# JVM / Scala / SBT
+target/
+project/target/
+.bloop/
+.metals/
+.scala-build/
+
+# Build outputs / temp
+build/
+tmp/
+.cache/
+
+# Docker / local tooling
+.docker/

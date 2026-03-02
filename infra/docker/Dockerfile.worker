@@ -1,0 +1,106 @@
+# ── Stage 1: Node build (TypeScript → JavaScript) ──────────────
+FROM node:22-slim AS node-build
+
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+
+WORKDIR /app
+
+# Copy monorepo root files needed for pnpm workspace resolution
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+
+# Copy only the worker package
+COPY services/worker/ services/worker/
+
+# Install all deps (dev + prod) for building
+RUN pnpm install --frozen-lockfile
+
+# Compile TypeScript
+RUN pnpm --filter @canopy/worker build
+
+# ── Stage 2: SBT build (compile all Scala engines) ────────────
+FROM eclipse-temurin:8-jdk AS sbt-build
+
+# Install SBT
+RUN apt-get update && apt-get install -y --no-install-recommends curl gnupg && \
+    echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" > /etc/apt/sources.list.d/sbt.list && \
+    curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | apt-key add - && \
+    apt-get update && apt-get install -y --no-install-recommends sbt=1.10.7 && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy SBT project definition files first (for layer caching)
+COPY build.sbt ./
+COPY project/build.properties project/
+COPY project/plugins.sbt project/
+
+# Pre-fetch SBT and dependencies (cached layer)
+RUN sbt -batch update
+
+# Copy Scala source code
+COPY scala/ scala/
+
+# Compile all Scala modules (pre-warm so container starts skip the 60-120s compile)
+RUN sbt -batch compile
+
+# ── Stage 3: Runtime (Node + JDK + SBT + pre-compiled targets) ─
+FROM eclipse-temurin:8-jdk-jammy AS runtime
+
+# Install Node.js 22, SBT, and tini
+RUN apt-get update && apt-get install -y --no-install-recommends curl gnupg && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" > /etc/apt/sources.list.d/sbt.list && \
+    curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | apt-key add - && \
+    apt-get update && apt-get install -y --no-install-recommends nodejs sbt=1.10.7 tini && \
+    corepack enable && corepack prepare pnpm@9.15.0 --activate && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy monorepo root files for pnpm workspace resolution
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Copy worker package.json
+COPY services/worker/package.json services/worker/
+
+# Install production Node dependencies only
+RUN pnpm install --frozen-lockfile --prod
+
+# Copy compiled JS from Node build stage
+COPY --from=node-build /app/services/worker/dist/ services/worker/dist/
+
+# Copy SBT project definition
+COPY build.sbt ./
+COPY project/build.properties project/
+COPY project/plugins.sbt project/
+
+# Copy Scala source (needed for sbt runMain)
+COPY scala/ scala/
+
+# Copy pre-compiled Scala targets from SBT build stage
+COPY --from=sbt-build /app/target/ target/
+COPY --from=sbt-build /app/project/target/ project/target/
+COPY --from=sbt-build /app/scala/canopy-data/target/ scala/canopy-data/target/
+COPY --from=sbt-build /app/scala/canopy-scenarios/target/ scala/canopy-scenarios/target/
+COPY --from=sbt-build /app/scala/canopy-inference-rainier/target/ scala/canopy-inference-rainier/target/
+COPY --from=sbt-build /app/scala/canopy-engine-property/target/ scala/canopy-engine-property/target/
+COPY --from=sbt-build /app/scala/canopy-engine-trigger/target/ scala/canopy-engine-trigger/target/
+COPY --from=sbt-build /app/scala/canopy-engine-portfolio/target/ scala/canopy-engine-portfolio/target/
+COPY --from=sbt-build /app/scala/canopy-risk-metrics/target/ scala/canopy-risk-metrics/target/
+
+# Copy SBT dependency cache from build stage
+COPY --from=sbt-build /root/.sbt/ /root/.sbt/
+COPY --from=sbt-build /root/.cache/ /root/.cache/
+
+# Copy test-data for engine input files
+COPY test-data/ test-data/
+
+# Create upload directory
+RUN mkdir -p /app/target/uploads
+
+ENV NODE_ENV=production
+
+EXPOSE 4001
+
+ENTRYPOINT ["tini", "--"]
+CMD ["node", "services/worker/dist/index.js"]

@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# JVM / Scala / SBT (rebuilt inside container)
+target/
+project/target/
+.bloop/
+.metals/
+.scala-build/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Docker
+.docker/
+.dockerignore
+
+# Docs / CI (not needed in image)
+docs/
+.github/
+*.md
+
+# Test / temp
+tmp/
+.cache/
+.turbo/
+.next/
+
+# Python (if any)
+.venv/
+venv/
+__pycache__/

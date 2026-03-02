@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://canopy.workbench/contracts/json/v1/job-state.enum.schema.json",
+  "title": "JobState",
+  "description": "Execution state for long-running jobs and runs.",
+  "type": "string",
+  "enum": [
+    "queued",
+    "validating",
+    "running",
+    "succeeded",
+    "failed",
+    "canceled"
+  ]
+}

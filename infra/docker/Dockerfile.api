@@ -1,0 +1,45 @@
+# ── Stage 1: Build ──────────────────────────────────────────────
+FROM node:22-slim AS build
+
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+
+WORKDIR /app
+
+# Copy monorepo root files needed for pnpm workspace resolution
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+
+# Copy only the API package
+COPY apps/api/ apps/api/
+
+# Install all deps (dev + prod) for building
+RUN pnpm install --frozen-lockfile
+
+# Compile TypeScript
+RUN pnpm --filter @canopy/api build
+
+# ── Stage 2: Runtime ───────────────────────────────────────────
+FROM node:22-slim AS runtime
+
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+
+WORKDIR /app
+
+# Copy monorepo root files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Copy the API package.json (needed for pnpm to resolve the workspace)
+COPY apps/api/package.json apps/api/
+
+# Install production dependencies only
+RUN pnpm install --frozen-lockfile --prod
+
+# Copy compiled output from build stage
+COPY --from=build /app/apps/api/dist/ apps/api/dist/
+
+# Create upload directory
+RUN mkdir -p /app/target/uploads
+
+ENV NODE_ENV=production
+EXPOSE 3001
+
+CMD ["node", "apps/api/dist/index.js"]

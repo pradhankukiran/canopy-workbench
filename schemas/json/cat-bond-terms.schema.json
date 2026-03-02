@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://canopy.workbench/contracts/json/v1/cat-bond-terms.schema.json",
+  "title": "CatBondTerms",
+  "description": "MVP candidate cat bond term sheet inputs.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "triggerType": {
+      "type": "string",
+      "enum": [
+        "indemnity",
+        "industry-loss",
+        "parametric",
+        "modeled-loss"
+      ]
+    },
+    "perils": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "regions": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "effectiveDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "maturityDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "notional": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "attachmentPoint": {
+      "type": "number",
+      "minimum": 0
+    },
+    "exhaustionPoint": {
+      "type": "number",
+      "minimum": 0
+    },
+    "expectedLossBps": {
+      "type": "number",
+      "minimum": 0
+    },
+    "couponSpreadBps": {
+      "type": "number",
+      "minimum": 0
+    },
+    "modeledShare": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  },
+  "required": [
+    "triggerType",
+    "perils",
+    "effectiveDate",
+    "maturityDate",
+    "notional",
+    "attachmentPoint",
+    "exhaustionPoint"
+  ]
+}

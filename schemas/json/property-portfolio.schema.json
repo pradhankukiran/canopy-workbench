@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://canopy.workbench/contracts/json/v1/property-portfolio.schema.json",
+  "title": "PropertyPortfolio",
+  "description": "MVP exposure dataset for property portfolio analytics.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "portfolioId": {
+      "type": "string",
+      "pattern": "^pf_[a-z0-9]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "asOfDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "locations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "locationId": {
+            "type": "string",
+            "pattern": "^loc_[a-z0-9]+$"
+          },
+          "country": {
+            "type": "string",
+            "minLength": 2
+          },
+          "region": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "perilSet": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "tiv": {
+            "type": "number",
+            "minimum": 0
+          },
+          "deductible": {
+            "type": "number",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 0
+          },
+          "occupancy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "locationId",
+          "country",
+          "perilSet",
+          "tiv"
+        ]
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number",
+          "boolean"
+        ]
+      }
+    }
+  },
+  "required": [
+    "portfolioId",
+    "name",
+    "currency",
+    "locations"
+  ]
+}

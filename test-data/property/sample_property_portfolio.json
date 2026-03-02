@@ -1,0 +1,55 @@
+{
+  "portfolioId": "pf_demo_pricing1",
+  "name": "Gulf Coast Property Portfolio",
+  "currency": "USD",
+  "locations": [
+    {
+      "locationId": "loc_p1",
+      "country": "US",
+      "region": "TX",
+      "latitude": 29.74,
+      "longitude": -95.37,
+      "perilSet": ["WIND", "HAIL"],
+      "tiv": 15000000,
+      "deductible": 250000,
+      "limit": 12000000,
+      "occupancy": "Commercial"
+    },
+    {
+      "locationId": "loc_p2",
+      "country": "US",
+      "region": "LA",
+      "latitude": 29.95,
+      "longitude": -90.07,
+      "perilSet": ["WIND", "FLOOD", "STORM_SURGE"],
+      "tiv": 9000000,
+      "deductible": 150000,
+      "limit": 7000000,
+      "occupancy": "Industrial"
+    },
+    {
+      "locationId": "loc_p3",
+      "country": "US",
+      "region": "FL",
+      "latitude": 25.77,
+      "longitude": -80.19,
+      "perilSet": ["WIND"],
+      "tiv": 8000000,
+      "deductible": 100000,
+      "limit": 6500000,
+      "occupancy": "Residential"
+    },
+    {
+      "locationId": "loc_p4",
+      "country": "MX",
+      "region": "YUC",
+      "latitude": 20.97,
+      "longitude": -89.62,
+      "perilSet": ["WIND"],
+      "tiv": 5000000,
+      "deductible": 120000,
+      "limit": 4000000,
+      "occupancy": "Hospitality"
+    }
+  ]
+}

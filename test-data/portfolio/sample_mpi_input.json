@@ -1,0 +1,99 @@
+{
+  "runId": "run_mpidemo1",
+  "workspaceId": "ws_canopydemo1",
+  "candidateDealId": "deal_demo001",
+  "analysisType": "risk",
+  "engineProfile": "standard",
+  "randomSeed": 19,
+  "candidateDeal": {
+    "candidateDealId": "deal_demo001",
+    "workspaceId": "ws_canopydemo1",
+    "name": "Gulf Wind Sidecar 2027",
+    "portfolio": {
+      "portfolioId": "pf_demo001",
+      "workspaceId": "ws_canopydemo1",
+      "kind": "property-portfolio",
+      "propertyPortfolio": {
+        "portfolioId": "pf_demo001",
+        "name": "US Wind Portfolio",
+        "currency": "USD",
+        "locations": [
+          {
+            "locationId": "loc_a1",
+            "country": "US",
+            "region": "FL",
+            "latitude": 26.2,
+            "longitude": -80.1,
+            "perilSet": ["WIND", "STORM_SURGE"],
+            "tiv": 12000000,
+            "deductible": 250000,
+            "limit": 10000000,
+            "occupancy": "Residential"
+          },
+          {
+            "locationId": "loc_a2",
+            "country": "US",
+            "region": "TX",
+            "latitude": 29.6,
+            "longitude": -95.0,
+            "perilSet": ["WIND", "HAIL"],
+            "tiv": 18000000,
+            "deductible": 300000,
+            "limit": 15000000,
+            "occupancy": "Commercial"
+          },
+          {
+            "locationId": "loc_a3",
+            "country": "US",
+            "region": "LA",
+            "latitude": 30.0,
+            "longitude": -90.0,
+            "perilSet": ["WIND", "FLOOD"],
+            "tiv": 9000000,
+            "deductible": 180000,
+            "limit": 7000000,
+            "occupancy": "Industrial"
+          },
+          {
+            "locationId": "loc_a4",
+            "country": "MX",
+            "region": "YUC",
+            "latitude": 21.1,
+            "longitude": -89.6,
+            "perilSet": ["WIND"],
+            "tiv": 6000000,
+            "deductible": 120000,
+            "limit": 5000000,
+            "occupancy": "Hospitality"
+          }
+        ]
+      }
+    },
+    "catBondTerms": {
+      "triggerType": "modeled-loss",
+      "perils": ["WIND"],
+      "regions": ["US_GULF", "MEXICO_GULF"],
+      "effectiveDate": "2027-01-01",
+      "maturityDate": "2027-12-31",
+      "notional": 8000000,
+      "attachmentPoint": 25000000,
+      "exhaustionPoint": 45000000,
+      "expectedLossBps": 375,
+      "couponSpreadBps": 825,
+      "modeledShare": 0.72
+    }
+  },
+  "moduleParameters": {
+    "marginalPortfolioImpact": {
+      "baselinePortfolioId": "pf_demo001",
+      "candidateDealName": "Gulf Wind Sidecar 2027",
+      "candidateDealLimit": 8000000,
+      "tailCurve": "oep",
+      "tailMetric": "var",
+      "tailReturnPeriodYears": 100,
+      "returnPeriodsYears": [10, 20, 50, 100, 250],
+      "candidateParticipationPct": 35,
+      "includeTailRiskComparison": true
+    }
+  }
+}

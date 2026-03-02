@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://canopy.workbench/contracts/json/v1/candidate-deal.schema.json",
+  "title": "CandidateDeal",
+  "description": "MVP candidate transaction definition for pricing and risk runs.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "candidateDealId": {
+      "type": "string",
+      "pattern": "^deal_[a-z0-9]+$"
+    },
+    "workspaceId": {
+      "type": "string",
+      "pattern": "^ws_[a-z0-9]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "portfolio": {
+      "$ref": "./portfolio.schema.json"
+    },
+    "catBondTerms": {
+      "$ref": "./cat-bond-terms.schema.json"
+    },
+    "assumptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "modelVersion": {
+          "type": "string"
+        },
+        "simulationYears": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "eventSetVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "candidateDealId",
+    "workspaceId",
+    "name",
+    "portfolio",
+    "catBondTerms"
+  ]
+}
