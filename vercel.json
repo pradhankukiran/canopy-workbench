@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "pnpm --filter @canopy/web build",
-  "outputDirectory": "apps/web/dist",
+  "outputDirectory": "dist",
   "installCommand": "corepack enable && pnpm install --frozen-lockfile",
-  "framework": "vite",
+  "framework": null,
   "rewrites": [
     { "source": "/((?!assets/).*)", "destination": "/index.html" }
   ]
