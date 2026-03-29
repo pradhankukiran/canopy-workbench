@@ -1797,7 +1797,33 @@ function coerceScalaIlsCliResultToRunResult(params: {
     if (bundle) return bundle;
   }
 
-  throw new Error("Scala CLI JSON did not contain a complete PosteriorBundle payload");
+  // Fallback: try to parse as trigger-only output merged into a minimal result
+  const fallback: RunResultRecord = {
+    runId: params.runId,
+    workspaceId: params.workspaceId,
+    generatedAt: new Date().toISOString(),
+    modelVersion: "unknown",
+    priorVersion: "unknown",
+    posteriorSampleCount: 0,
+    riskMetrics: {
+      currency: "USD", expectedLoss: 0, expectedLossRate: 0, stdDevLoss: 0,
+      attachmentProbability: 0, exhaustionProbability: 0, var99: 0, tvar99: 0, oep: [], aep: []
+    },
+    yearOutcomes: [],
+    diagnostics: { rHatMax: 1, essMin: 1 }
+  };
+
+  for (const record of records) {
+    const triggerResult = mergeScalaTriggerOutputIntoFallback({
+      raw: record,
+      fallback,
+      runId: params.runId,
+      workspaceId: params.workspaceId
+    });
+    if (triggerResult) return triggerResult;
+  }
+
+  throw new Error("Scala CLI JSON did not contain a complete PosteriorBundle or trigger payload");
 }
 
 function shellQuote(value: string): string {
