@@ -388,12 +388,13 @@ export function useWorkflow(
     setJobRecord(job);
     setLastPolledAt(new Date().toISOString());
     setPollError(null);
-    void refreshRunEvents(run.runId);
 
     const terminal =
-      isTerminalState(run.state) || isTerminalState(job.state);
+      isTerminalState(run.state) && isTerminalState(job.state);
     const succeeded =
       run.state === "succeeded" || job.state === "succeeded";
+
+    await refreshRunEvents(run.runId);
 
     if (terminal) {
       setPollingActive(false);
