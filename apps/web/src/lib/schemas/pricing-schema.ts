@@ -20,8 +20,13 @@ const pricingFieldsSchema = z
     yltRowLimit: z
       .string()
       .refine(
-        (v) => v.trim() === "" || /^\d+$/.test(v.trim()),
-        "Must be a positive integer"
+        (v) => {
+          if (v.trim() === "") return true;
+          if (!/^\d+$/.test(v.trim())) return false;
+          const n = Number(v.trim());
+          return n >= 1 && n <= 10_000_000;
+        },
+        "Must be a positive integer up to 10,000,000"
       ),
     lossBasis: z.enum(["net", "gross", "ceded"]),
     includeGrossNetBreakout: z.boolean(),
