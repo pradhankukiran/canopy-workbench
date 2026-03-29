@@ -530,6 +530,9 @@ export class RedisStateStore {
 
   async saveJobAndRun(job: JobRecord, run: RunRecord): Promise<void> {
     const score = Date.parse(run.createdAt);
+    if (!Number.isFinite(score)) {
+      throw new Error(`Invalid createdAt timestamp: ${run.createdAt}`);
+    }
     const tx = this.redis.multi();
     tx.set(this.key.job(job.id), JSON.stringify(job));
     tx.zadd(this.key.jobsIndex(), score, job.id);
@@ -578,6 +581,9 @@ export class RedisStateStore {
 
   async saveUpload(upload: UploadRecord): Promise<void> {
     const score = Date.parse(upload.createdAt);
+    if (!Number.isFinite(score)) {
+      throw new Error(`Invalid createdAt timestamp: ${upload.createdAt}`);
+    }
     const tx = this.redis.multi();
     tx.set(this.key.upload(upload.id), JSON.stringify(upload));
     tx.zadd(this.key.uploadsIndex(), score, upload.id);
