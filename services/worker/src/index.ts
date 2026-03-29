@@ -2599,8 +2599,17 @@ async function main(): Promise<void> {
             message: "Run failed",
             metadata: { error: message }
           });
-        } catch {
-          // Ignore secondary state update failures; primary error is logged by BullMQ handler.
+        } catch (stateError) {
+          console.error(
+            JSON.stringify({
+              level: "error",
+              msg: "failed to update job/run status after processing error",
+              runId: payload.runId,
+              jobId: payload.jobId,
+              stateError: stateError instanceof Error ? stateError.message : String(stateError),
+              primaryError: message
+            })
+          );
         }
         console.error(
           JSON.stringify({
