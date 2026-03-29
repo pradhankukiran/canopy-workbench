@@ -27,6 +27,8 @@ function LossExceedanceCurve({
     .flatMap((p) => [p.grossLoss, p.netLoss, p.bondPayout])
     .filter((v): v is number => typeof v === "number" && v >= 0);
 
+  if (allRp.length === 0 || allLoss.length === 0) return null;
+
   const rpMin = Math.max(1, Math.min(...allRp));
   const rpMax = Math.max(10, Math.max(...allRp));
   const lossMax = Math.max(1, Math.max(...allLoss));
