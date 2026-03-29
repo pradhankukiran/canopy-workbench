@@ -34,6 +34,11 @@ if ! command -v docker &>/dev/null; then
   exit 1
 fi
 
+if ! docker compose version &>/dev/null; then
+  echo "ERROR: 'docker compose' plugin not available."
+  exit 1
+fi
+
 # ── 2. Pull latest code ───────────────────────────────────────
 if [ "$SKIP_PULL" = false ]; then
   echo "==> Pulling latest code"
