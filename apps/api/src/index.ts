@@ -323,7 +323,7 @@ async function main(): Promise<void> {
     if (!analysisType) {
       return reply.code(400).send(
         apiError(
-          "A supported analysisType is required. Allowed values: pricing or sensitivity.",
+          "A supported analysisType is required. Allowed values: pricing, sensitivity, or risk.",
           "invalid_analysis_type"
         )
       );
