@@ -19,8 +19,8 @@ function ScenarioScatter({ rows }: ScenarioScatterProps) {
 
   if (validRows.length === 0) return null;
 
-  const indexValues = validRows.map((r) => r.triggerIndexValue!);
-  const payoutPcts = validRows.map((r) => r.payoutPct!);
+  const indexValues = validRows.map((r) => r.triggerIndexValue as number);
+  const payoutPcts = validRows.map((r) => r.payoutPct as number);
 
   const xMin = Math.min(...indexValues) * 0.9;
   const xMax = Math.max(...indexValues) * 1.1;
@@ -64,8 +64,8 @@ function ScenarioScatter({ rows }: ScenarioScatterProps) {
               {validRows.map((r, i) => (
                 <circle
                   key={i}
-                  cx={xScale(r.triggerIndexValue!)}
-                  cy={yScale(r.payoutPct!)}
+                  cx={xScale(r.triggerIndexValue as number)}
+                  cy={yScale(r.payoutPct as number)}
                   r={3}
                   fill={
                     r.exhausted
