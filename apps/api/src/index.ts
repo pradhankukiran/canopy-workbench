@@ -270,7 +270,6 @@ async function main(): Promise<void> {
       await fs.mkdir(config.uploadDir, { recursive: true });
       const safeName = sanitizeFilename(filename);
       const filePath = path.resolve(config.uploadDir, `${uploadId}-${safeName}`);
-      await fs.writeFile(filePath, contentText, "utf8");
       storagePath = filePath;
     }
 
@@ -287,6 +286,10 @@ async function main(): Promise<void> {
     };
 
     await store.saveUpload(upload);
+
+    if (typeof contentText === "string" && storagePath) {
+      await fs.writeFile(storagePath, contentText, "utf8");
+    }
 
     return reply.code(201).send(toApiUpload(upload));
   });
