@@ -433,7 +433,6 @@ async function main(): Promise<void> {
         metadata: { error: message }
       });
       app.log.error({ runId, jobId, error: message }, "run enqueue failed");
-      throw error;
     }
 
     return reply.code(202).send({
