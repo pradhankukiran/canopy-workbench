@@ -84,7 +84,7 @@ services:
       S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin_prod}
       S3_BUCKET: ${S3_BUCKET:-canopy-prod}
     ports:
-      - "127.0.0.1:3001:3001"
+      - "0.0.0.0:3001:3001"
     volumes:
       - upload_data:/app/target/uploads
     healthcheck:
