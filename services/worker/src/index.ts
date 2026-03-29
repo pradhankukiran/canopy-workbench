@@ -1683,9 +1683,12 @@ function mergeBundleLikeScalaResult(params: {
     modelVersion,
     priorVersion,
     posteriorSampleCount: Math.max(1, Math.trunc(posteriorSampleCount)),
-    riskMetrics: riskMetricsRaw as RunResultRecord["riskMetrics"],
-    yearOutcomes: yearOutcomes as RunResultRecord["yearOutcomes"],
-    diagnostics: diagnostics as RunResultRecord["diagnostics"],
+    riskMetrics: normalizeRiskMetrics(riskMetricsRaw as Record<string, unknown>, {
+      currency: "USD", expectedLoss: 0, expectedLossRate: 0, stdDevLoss: 0,
+      attachmentProbability: 0, exhaustionProbability: 0, var99: 0, tvar99: 0, oep: [], aep: []
+    }),
+    yearOutcomes: normalizeYearOutcomes(yearOutcomes, []),
+    diagnostics: normalizeDiagnostics(diagnostics, { rHatMax: 1, essMin: 1 }),
     ...(moduleOutputs ? { moduleOutputs } : {}),
     ...(artifacts ? { artifacts } : {})
   };
