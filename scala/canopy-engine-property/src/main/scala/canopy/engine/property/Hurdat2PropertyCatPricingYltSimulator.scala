@@ -414,7 +414,7 @@ object Hurdat2PropertyCatPricingYltSimulator {
 
   private def supportsWindPeril(loc: PropertyLocation): Boolean = {
     if (loc.perilSet.isEmpty) true
-    loc.perilSet.exists { peril =>
+    else loc.perilSet.exists { peril =>
       val p = peril.trim.toUpperCase
       p.contains("WIND") || p.contains("TC") || p.contains("HURRICANE") || p.contains("STORM")
     }
