@@ -2299,10 +2299,14 @@ async function createRunResultWithIlsHandoff(params: {
       asRecord(moduleParameters?.propertyCatPricing) ??
       asRecord(moduleParameters?.propertyCatPricingYlt) ??
       asRecord(moduleParameters?.pricingYlt);
-    const pricingPerRunTimeoutMs = Math.max(
-      1_000,
-      Math.trunc(
-        asNumber(pricingInput?.scalaEngineTimeoutMs) ?? params.config.propertyPricingScalaCliTimeoutMs
+    const MAX_ENGINE_TIMEOUT_MS = 3_600_000; // 1 hour
+    const pricingPerRunTimeoutMs = Math.min(
+      MAX_ENGINE_TIMEOUT_MS,
+      Math.max(
+        1_000,
+        Math.trunc(
+          asNumber(pricingInput?.scalaEngineTimeoutMs) ?? params.config.propertyPricingScalaCliTimeoutMs
+        )
       )
     );
 
@@ -2392,9 +2396,12 @@ async function createRunResultWithIlsHandoff(params: {
     asRecord(moduleParameters?.ilsParametricTrigger) ??
     asRecord(moduleParameters?.ilsParametricTriggerSimulator) ??
     asRecord(moduleParameters?.parametricTriggerSimulation);
-  const perRunTimeoutMs = Math.max(
-    1_000,
-    Math.trunc(asNumber(ilsInput?.scalaEngineTimeoutMs) ?? params.config.ilsScalaCliTimeoutMs)
+  const perRunTimeoutMs = Math.min(
+    3_600_000,
+    Math.max(
+      1_000,
+      Math.trunc(asNumber(ilsInput?.scalaEngineTimeoutMs) ?? params.config.ilsScalaCliTimeoutMs)
+    )
   );
   try {
     execution = await invokeIlsScalaCli({
