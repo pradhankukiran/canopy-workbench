@@ -126,19 +126,26 @@ object Windfield {
         exponentialDecayKt(distanceKm, point, pp)
       }
 
-    if (!pp.useTranslationAsymmetry || symmetricKt <= 0d) symmetricKt
-    else {
-      val adjustment = TranslationAsymmetry.adjustment(
-        stormLatDeg = point.latitude,
-        stormLonDeg = point.longitude,
-        headingDeg = ctx.headingDeg,
-        translationSpeed = ctx.speedKt,
-        siteLatDeg = loc.latitude,
-        siteLonDeg = loc.longitude,
-        k = pp.translationAsymmetryK
-      )
-      math.max(0d, symmetricKt + adjustment)
-    }
+    val asymmetricKt =
+      if (!pp.useTranslationAsymmetry || symmetricKt <= 0d) symmetricKt
+      else {
+        val adjustment = TranslationAsymmetry.adjustment(
+          stormLatDeg = point.latitude,
+          stormLonDeg = point.longitude,
+          headingDeg = ctx.headingDeg,
+          translationSpeed = ctx.speedKt,
+          siteLatDeg = loc.latitude,
+          siteLonDeg = loc.longitude,
+          k = pp.translationAsymmetryK
+        )
+        math.max(0d, symmetricKt + adjustment)
+      }
+
+    // Phase 2.6: terrain roughness reduction at 10 m. Applied once, at
+    // the end of the hazard chain. This converts the boundary-layer
+    // "open-water" wind into the wind the structure actually sees.
+    if (!pp.useSurfaceRoughness) asymmetricKt
+    else asymmetricKt * SurfaceRoughness.factorFor(loc.surfaceRoughnessClass)
   }
 
   /** Phase-1 exponential-decay fallback. Kept for storms missing the

@@ -36,6 +36,11 @@ object Hurdat2PropertyCatPricingYltSimulator {
       useTranslationAsymmetry: Boolean = true,
       translationAsymmetryK: Double = 0.55d,
       translationMaxKt: Double = 40d,
+      // Phase 2.6: terrain roughness reduction. Multiplies the (Holland +
+      // asymmetry) surface wind by an ESDU/ASCE-7 exposure-category
+      // factor keyed on surfaceRoughnessClass. Disabling reverts to the
+      // open-water baseline (factor = 1.0) for every site.
+      useSurfaceRoughness: Boolean = true,
       rmaxFromR34Factor: Double = 0.35d,
       // Rmax climatology. "willoughby2006" uses Willoughby, Darling & Rahn
       // 2006:  Rmax = 46.4 * exp(-0.0155 V_max_ms + 0.0169 |lat|) - the
