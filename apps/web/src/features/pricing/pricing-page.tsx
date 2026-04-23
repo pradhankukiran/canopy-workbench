@@ -11,6 +11,7 @@ import { ResultsLayout } from "@/features/shared-workflow/results-layout";
 import { UploadPanel } from "@/features/shared-workflow/upload-panel";
 import { PricingForm } from "./components/pricing-form";
 import { PricingResults } from "./components/pricing-results";
+import { LayerEditor } from "./components/layer-editor";
 
 export function PricingPage() {
   const navigate = useNavigate();
@@ -81,7 +82,12 @@ export function PricingPage() {
           highlights={highlights}
           fieldErrors={w.fieldErrors}
           clearFieldError={w.clearFieldError}
-          moduleFields={<PricingForm form={w.form} setForm={w.setForm} fieldErrors={w.fieldErrors} clearFieldError={w.clearFieldError} />}
+          moduleFields={
+            <>
+              <PricingForm form={w.form} setForm={w.setForm} fieldErrors={w.fieldErrors} clearFieldError={w.clearFieldError} />
+              <LayerEditor form={w.form} setForm={w.setForm} />
+            </>
+          }
           uploadSection={
             <UploadPanel
               items={w.uploadItems}

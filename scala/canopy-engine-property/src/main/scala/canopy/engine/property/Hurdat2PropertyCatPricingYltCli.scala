@@ -172,6 +172,10 @@ object Hurdat2PropertyCatPricingYltCli {
           optionalString(pricingObj, "currency"),
           lookup.optionalString("currency")
         ).getOrElse("USD")
+      // Phase 5: parse an optional layerTower + premiumTerms from the
+      // pricing input so the web can drive per-run reinsurance structures.
+      layerTower = parseLayerTower(pricingObj)
+      premiumTerms = parsePremiumTerms(pricingObj)
       params = Params(
         simulatedYears =
           optionalInt(pricingObj, "simulatedYears")
@@ -184,7 +188,11 @@ object Hurdat2PropertyCatPricingYltCli {
         includeGrossNetBreakout = optionalBoolean(pricingObj, "includeGrossNetBreakout").getOrElse(true),
         includeSummaryPercentiles = optionalBoolean(pricingObj, "includeSummaryPercentiles").getOrElse(true),
         currency = currency,
-        randomSeed = randomSeed
+        randomSeed = randomSeed,
+        pricingParameters = Hurdat2PropertyCatPricingYltSimulator.PricingParameters.default.copy(
+          layerTower = layerTower,
+          premiumTerms = premiumTerms
+        )
       )
       hurdat2Path = resolvePath(
         cliArgs.hurdat2Override.map(_.toString)
@@ -692,6 +700,53 @@ object Hurdat2PropertyCatPricingYltCli {
       case "ceded" => cededLoss
       case _       => netLoss
     }
+
+  /** Parse `pricingObj.layerTower = [ {name, attachment, limit, ...}, ... ]`
+    * into a LayerTower case-class. An absent or empty array returns
+    * LayerTower.empty which the simulator treats as "no cession". */
+  private def parseLayerTower(pricingObj: ujson.Obj): canopy.engine.property.financial.LayerTower = {
+    import canopy.engine.property.financial.{Layer, LayerBasis, LayerTower}
+    val arr = pricingObj.value.get("layerTower").collect { case a: ujson.Arr => a.value }.getOrElse(Seq.empty)
+    if (arr.isEmpty) return LayerTower.empty
+
+    val layers = arr.toVector.zipWithIndex.flatMap { case (item, idx) =>
+      item match {
+        case o: ujson.Obj =>
+          val attachment = optionalDouble(o, "attachment").getOrElse(Double.NaN)
+          val limit = optionalDouble(o, "limit").getOrElse(Double.NaN)
+          if (!attachment.isFinite || attachment < 0d || !limit.isFinite || limit <= 0d) None
+          else
+            Some(
+              Layer(
+                name = optionalString(o, "name").getOrElse(s"Layer ${idx + 1}"),
+                attachment = attachment,
+                limit = limit,
+                share = optionalDouble(o, "share").filter(s => s > 0d && s <= 1d).getOrElse(1.0d),
+                basis = optionalString(o, "basis").map(LayerBasis.fromString).getOrElse(LayerBasis.Occurrence),
+                reinstatements = optionalInt(o, "reinstatements").filter(_ >= 0).getOrElse(0)
+              )
+            )
+        case _ => None
+      }
+    }
+    LayerTower(layers)
+  }
+
+  /** Parse `pricingObj.premiumTerms = { riskLoadCoefficient, shape,
+    * brokerageRate, profitCommissionRate }` into a PremiumTerms case class. */
+  private def parsePremiumTerms(pricingObj: ujson.Obj): canopy.engine.property.financial.PremiumTerms = {
+    import canopy.engine.property.financial.{PremiumTerms, RiskLoadShape}
+    pricingObj.value.get("premiumTerms") match {
+      case Some(o: ujson.Obj) =>
+        PremiumTerms(
+          riskLoadShape = optionalString(o, "riskLoadShape").map(RiskLoadShape.fromString).getOrElse(RiskLoadShape.Additive),
+          riskLoadCoefficient = optionalDouble(o, "riskLoadCoefficient").filter(_ >= 0d).getOrElse(0.25d),
+          brokerageRate = optionalDouble(o, "brokerageRate").filter(v => v >= 0d && v < 1d).getOrElse(0.05d),
+          profitCommissionRate = optionalDouble(o, "profitCommissionRate").filter(v => v >= 0d && v < 1d).getOrElse(0d)
+        )
+      case _ => PremiumTerms()
+    }
+  }
 
   private def summaryJson(result: Result, stats: Hurdat2PropertyCatPricingYltSimulator.SummaryStats): ujson.Obj = {
     val obj = ujson.Obj(

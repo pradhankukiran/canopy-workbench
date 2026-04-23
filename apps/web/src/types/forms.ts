@@ -8,6 +8,23 @@ export interface MarginalPortfolioImpactFormState {
   includeTailRiskComparison: boolean;
 }
 
+export interface LayerFormState {
+  localId: string;
+  name: string;
+  attachment: string;
+  limit: string;
+  share: string;
+  basis: "occurrence" | "aggregate";
+  reinstatements: string;
+}
+
+export interface PremiumTermsFormState {
+  riskLoadShape: "additive" | "multiplicative";
+  riskLoadCoefficient: string;
+  brokerageRate: string;
+  profitCommissionRate: string;
+}
+
 export interface PropertyCatPricingYltFormState {
   simulatedYears: string;
   returnPeriodsYearsCsv: string;
@@ -19,6 +36,8 @@ export interface PropertyCatPricingYltFormState {
   hurdat2Path: string;
   useScalaEngine: boolean;
   scalaEngineTimeoutMs: string;
+  layers: LayerFormState[];
+  premiumTerms: PremiumTermsFormState;
 }
 
 export interface IlsParametricTriggerSimulatorFormState {

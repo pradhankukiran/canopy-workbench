@@ -1,7 +1,55 @@
 import type { ModuleDefinition } from "@/types/modules";
-import type { RunFormState } from "@/types/forms";
+import type { LayerFormState, PremiumTermsFormState, RunFormState } from "@/types/forms";
 import type { RunRequest, RunUploadBinding } from "@/types/api";
 import { parseIntegerList, parseOptionalNumber } from "./parsers";
+
+function buildLayerTowerPayload(layers: LayerFormState[]): Record<string, unknown> {
+  const valid = layers
+    .map((l) => {
+      const attachment = parseOptionalNumber(l.attachment);
+      const limit = parseOptionalNumber(l.limit);
+      if (typeof attachment !== "number" || attachment < 0) return null;
+      if (typeof limit !== "number" || limit <= 0) return null;
+      const share = parseOptionalNumber(l.share);
+      const reinstatements = parseOptionalNumber(l.reinstatements);
+      return {
+        name: l.name.trim().length > 0 ? l.name.trim() : `Layer`,
+        attachment,
+        limit,
+        share: typeof share === "number" && share > 0 && share <= 1 ? share : 1.0,
+        basis: l.basis,
+        reinstatements:
+          typeof reinstatements === "number" ? Math.max(0, Math.trunc(reinstatements)) : 0,
+      };
+    })
+    .filter(Boolean);
+  return valid.length > 0 ? { layerTower: valid } : {};
+}
+
+function buildPremiumTermsPayload(terms: PremiumTermsFormState): Record<string, unknown> {
+  const riskLoadCoefficient = parseOptionalNumber(terms.riskLoadCoefficient);
+  const brokerageRate = parseOptionalNumber(terms.brokerageRate);
+  const profitCommissionRate = parseOptionalNumber(terms.profitCommissionRate);
+  return {
+    premiumTerms: {
+      riskLoadShape: terms.riskLoadShape,
+      riskLoadCoefficient:
+        typeof riskLoadCoefficient === "number" && riskLoadCoefficient >= 0
+          ? riskLoadCoefficient
+          : 0.25,
+      brokerageRate:
+        typeof brokerageRate === "number" && brokerageRate >= 0 && brokerageRate < 1
+          ? brokerageRate
+          : 0.05,
+      profitCommissionRate:
+        typeof profitCommissionRate === "number" &&
+        profitCommissionRate >= 0 &&
+        profitCommissionRate < 1
+          ? profitCommissionRate
+          : 0,
+    },
+  };
+}
 
 export function buildDefaultForm(module: ModuleDefinition): RunFormState {
   return {
@@ -22,6 +70,13 @@ export function buildDefaultForm(module: ModuleDefinition): RunFormState {
       hurdat2Path: "test-data/hurdat2/combined_atlantic_pacific.hurdat2",
       useScalaEngine: true,
       scalaEngineTimeoutMs: "",
+      layers: [],
+      premiumTerms: {
+        riskLoadShape: "additive",
+        riskLoadCoefficient: "0.25",
+        brokerageRate: "0.05",
+        profitCommissionRate: "0",
+      },
     },
     ilsParametricTriggerSimulator: {
       triggerIndexName: "NOAA_WIND_INDEX",
@@ -128,6 +183,8 @@ export function buildRunPayload(
               ),
             }
           : {}),
+        ...buildLayerTowerPayload(pricingForm.layers),
+        ...buildPremiumTermsPayload(pricingForm.premiumTerms),
       },
     };
   } else if (module.key === "sensitivity") {
