@@ -204,26 +204,18 @@ object Hurdat2PropertyCatPricingYltSimulator {
           )
         }
 
+    if (normalizedLocations.isEmpty) {
+      throw new IllegalArgumentException(
+        s"Property portfolio ${portfolio.portfolioId} has no locations that pass validation " +
+          "(tiv > 0 and latitude/longitude in range). Refusing to fabricate a fallback location: " +
+          "an empty portfolio must fail visibly rather than silently price against synthetic exposure."
+      )
+    }
+
     portfolio.copy(
       currency =
         Option(portfolio.currency).map(_.trim.toUpperCase).filter(_.matches("^[A-Z]{3}$")).getOrElse(fallbackCurrency),
-      locations =
-        if (normalizedLocations.nonEmpty) normalizedLocations
-        else {
-          Vector(
-            PropertyLocation(
-              locationId = "loc_fallback",
-              latitude = 29.5d,
-              longitude = -90.0d,
-              tiv = 10000000d,
-              deductible = 200000d,
-              limit = 8000000d,
-              occupancy = Some("Commercial"),
-              perilSet = Vector("WIND"),
-              country = Some("US")
-            )
-          )
-        }
+      locations = normalizedLocations
     )
   }
 
