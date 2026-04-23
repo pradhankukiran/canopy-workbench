@@ -1,6 +1,7 @@
 package canopy.engine.property
 
 import canopy.data.hurdat2.Hurdat2Parser
+import canopy.engine.property.ylt.PosteriorBands
 import canopy.inference.rainier.MpiRainierCalibrator
 import canopy.engine.property.Hurdat2PropertyCatPricingYltSimulator.{
   Params,
@@ -372,14 +373,42 @@ object Hurdat2PropertyCatPricingYltCli {
       result: Result,
       enrichmentLog: PortfolioEnrichment.EnrichmentLog = PortfolioEnrichment.EnrichmentLog.empty
   ): ujson.Obj = {
+    // Phase 4: stop applying the Rainier posterior-mean as a uniform
+    // scale factor across every output. Keep the deterministic phase-3
+    // YLT, summary stats, and risk metrics; expose the Rainier
+    // calibration only as its own object (for diagnostics) and as a
+    // Gaussian approximation used by PosteriorBands to emit per-RP
+    // credible bands on OEP/AEP/TVaR.
     val calibrationAttempt = calibrateWithRainier(runInput, result)
     val calibrationApplied = calibrationAttempt.toOption
-    val scaleFactor = calibrationApplied.map(_.scaleFactor).getOrElse(1d)
-    val simulatedYears = scaleSimulatedYears(result.simulatedYears, scaleFactor)
-    val summary = scaleSummaryStats(result.summaryStats, scaleFactor)
-    val riskMetrics = scaleRiskMetrics(result.riskMetrics, scaleFactor)
+    val simulatedYears = result.simulatedYears
+    val summary = result.summaryStats
+    val riskMetrics = result.riskMetrics
     val yltRows = simulatedYears.take(result.params.normalizedYltRowLimit).map(yltRowJson(_, result.params.normalizedLossBasis))
     val currency = result.portfolio.currency
+
+    val scalePosterior = calibrationApplied.map { out =>
+      val det = if (out.deterministicBaseRate > 0d) out.deterministicBaseRate else 1d
+      PosteriorBands.ScalePosterior(
+        mean = out.posteriorMeanRate / det,
+        sigma = math.max(0d, out.posteriorStdDevRate / det)
+      )
+    }
+
+    val bandsRng = new scala.util.Random(result.params.randomSeed.toLong ^ 0x42L)
+    def bandsFor(series: Vector[Double]): Vector[PosteriorBands.BandPoint] =
+      PosteriorBands.compute(
+        annualLosses = series,
+        returnPeriodsYears = result.params.normalizedReturnPeriodsYears,
+        bootstrapSamples = 500,
+        scalePosterior = scalePosterior,
+        rng = bandsRng
+      )
+
+    val aepGrossBands = bandsFor(simulatedYears.map(_.grossLoss))
+    val aepNetBands = bandsFor(simulatedYears.map(_.netLoss))
+    val oepGrossBands = bandsFor(simulatedYears.map(_.maxEventGrossLoss))
+    val oepNetBands = bandsFor(simulatedYears.map(_.maxEventNetLoss))
 
     val pricingOutput = ujson.Obj(
       "currency" -> ujson.Str(currency),
@@ -429,6 +458,35 @@ object Hurdat2PropertyCatPricingYltCli {
         )
       })
     }
+
+    // Phase 4.2: per-quantile posterior credible bands on OEP / AEP.
+    // When Rainier calibration succeeded, each bootstrap sample is
+    // additionally scaled by a draw from the posterior Gaussian so the
+    // band reflects both simulation-sampling noise and calibration
+    // uncertainty. When calibration failed or was skipped, the bands
+    // reflect bootstrap noise alone, which is still informative.
+    def bandArrayJson(points: Vector[PosteriorBands.BandPoint]): ujson.Arr =
+      ujson.Arr.from(points.map { b =>
+        ujson.Obj(
+          "returnPeriodYears" -> ujson.Num(b.returnPeriodYears),
+          "mean" -> ujson.Num(round(b.mean, 2)),
+          "p05" -> ujson.Num(round(b.p05, 2)),
+          "p95" -> ujson.Num(round(b.p95, 2))
+        )
+      })
+
+    pricingOutput("oepBands") = ujson.Obj(
+      "source" -> ujson.Str(if (scalePosterior.isDefined) "bootstrap+rainier" else "bootstrap"),
+      "bootstrapSamples" -> ujson.Num(500),
+      "gross" -> bandArrayJson(oepGrossBands),
+      "net" -> bandArrayJson(oepNetBands)
+    )
+    pricingOutput("aepBands") = ujson.Obj(
+      "source" -> ujson.Str(if (scalePosterior.isDefined) "bootstrap+rainier" else "bootstrap"),
+      "bootstrapSamples" -> ujson.Num(500),
+      "gross" -> bandArrayJson(aepGrossBands),
+      "net" -> bandArrayJson(aepNetBands)
+    )
 
     // Phase 3.11: per-layer technical premium + per-year attachment /
     // exhaustion flags. Only present when the run configured a layer
@@ -567,27 +625,49 @@ object Hurdat2PropertyCatPricingYltCli {
     }
   }
 
+  // Convergence gates (phase 4.3). Gelman-Rubin R-hat <= 1.05 and
+  // effective-sample-size >= 400 are the standard cutoffs for
+  // "well-mixed" HMC output. Fail those and the posterior should be
+  // treated as unreliable; the status in the output lets ops gate on
+  // a single flag.
+  private val RHatConvergedMax: Double = 1.05d
+  private val EssConvergedMin: Double = 400d
+
   private def diagnosticsJson(
       calibration: Option[MpiRainierCalibrator.Output],
       result: Result
   ): ujson.Obj = {
     // Honest diagnostics: emit real MCMC R-hat / ESS only when the Rainier
-    // sampler actually produced them. Previously this path fabricated
-    // rHatMax=1.0 and a synthetic essMin whenever calibration was skipped
-    // (no Rainier run, sampler fallback, or too few observed rates), which
-    // presented users with "converged" diagnostics for an MCMC that never
-    // executed. Real per-quantile posterior diagnostics land in phase 4.
+    // sampler actually produced them. Phase 4.3 also classifies the
+    // output as converged / warning / failed based on fixed thresholds,
+    // so ops and the web UI can render a single badge.
     val _ = result
     calibration match {
       case Some(output) =>
         output.diagnostics match {
           case Some(d) =>
-            ujson.Obj(
-              "status" -> ujson.Str("converged"),
+            val rhatOk = d.rHatMax <= RHatConvergedMax
+            val essOk = d.essMin >= EssConvergedMin
+            val status =
+              if (rhatOk && essOk) "converged"
+              else if (d.rHatMax <= RHatConvergedMax + 0.05 && d.essMin >= EssConvergedMin / 2) "warning"
+              else "failed"
+            val warnings = Vector(
+              if (!rhatOk) Some(f"R-hat ${d.rHatMax}%.3f exceeds ${RHatConvergedMax}") else None,
+              if (!essOk)  Some(f"ESS ${d.essMin}%.0f below ${EssConvergedMin}%.0f") else None
+            ).flatten
+            val obj = ujson.Obj(
+              "status" -> ujson.Str(status),
               "rHatMax" -> ujson.Num(round(d.rHatMax)),
+              "rHatThreshold" -> ujson.Num(RHatConvergedMax),
               "essMin" -> ujson.Num(round(d.essMin, 2)),
+              "essThreshold" -> ujson.Num(EssConvergedMin),
               "source" -> ujson.Str("rainier-mcmc")
             )
+            if (warnings.nonEmpty) {
+              obj("warnings") = ujson.Arr.from(warnings.map(ujson.Str(_)))
+            }
+            obj
           case None =>
             ujson.Obj(
               "status" -> ujson.Str("no_mcmc_diagnostics"),
@@ -606,68 +686,12 @@ object Hurdat2PropertyCatPricingYltCli {
     }
   }
 
-  private def scaleSimulatedYears(
-      rows: Vector[Hurdat2PropertyCatPricingYltSimulator.SimulatedYearLoss],
-      rawFactor: Double
-  ): Vector[Hurdat2PropertyCatPricingYltSimulator.SimulatedYearLoss] = {
-    val factor = sanitizeScaleFactor(rawFactor)
-    rows.map(row =>
-      row.copy(
-        grossLoss = row.grossLoss * factor,
-        cededLoss = row.cededLoss * factor,
-        netLoss = row.netLoss * factor
-      )
-    )
-  }
-
-  private def scaleSummaryStats(
-      stats: Hurdat2PropertyCatPricingYltSimulator.SummaryStats,
-      rawFactor: Double
-  ): Hurdat2PropertyCatPricingYltSimulator.SummaryStats = {
-    val factor = sanitizeScaleFactor(rawFactor)
-    stats.copy(
-      p50Loss = stats.p50Loss * factor,
-      p90Loss = stats.p90Loss * factor,
-      p99Loss = stats.p99Loss * factor,
-      maxLoss = stats.maxLoss * factor
-    )
-  }
-
-  private def scaleRiskMetrics(
-      risk: Hurdat2PropertyCatPricingYltSimulator.RiskMetrics,
-      rawFactor: Double
-  ): Hurdat2PropertyCatPricingYltSimulator.RiskMetrics = {
-    val factor = sanitizeScaleFactor(rawFactor)
-    risk.copy(
-      expectedLoss = risk.expectedLoss * factor,
-      expectedLossRate = clamp01(risk.expectedLossRate * factor),
-      stdDevLoss = risk.stdDevLoss * factor,
-      var99 = risk.var99 * factor,
-      tvar99 = risk.tvar99 * factor,
-      oep = risk.oep.map(point => scaleReturnPeriodPoint(point, factor)),
-      aep = risk.aep.map(point => scaleReturnPeriodPoint(point, factor))
-    )
-  }
-
-  private def scaleReturnPeriodPoint(
-      point: Hurdat2PropertyCatPricingYltSimulator.ReturnPeriodPoint,
-      factor: Double
-  ): Hurdat2PropertyCatPricingYltSimulator.ReturnPeriodPoint =
-    point.copy(
-      grossLoss = point.grossLoss * factor,
-      netLoss = point.netLoss * factor,
-      bondPayout = point.bondPayout * factor
-    )
-
   private def lossByBasis(grossLoss: Double, cededLoss: Double, netLoss: Double, lossBasis: String): Double =
     lossBasis match {
       case "gross" => grossLoss
       case "ceded" => cededLoss
       case _       => netLoss
     }
-
-  private def sanitizeScaleFactor(value: Double): Double =
-    if (value.isFinite && value > 0d) value else 1d
 
   private def summaryJson(result: Result, stats: Hurdat2PropertyCatPricingYltSimulator.SummaryStats): ujson.Obj = {
     val obj = ujson.Obj(
