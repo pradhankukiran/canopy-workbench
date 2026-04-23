@@ -1,0 +1,105 @@
+{
+  "firstFiveSimulatedYears": [
+    {
+      "cededLoss": 0,
+      "eventCount": 0,
+      "grossLoss": 0,
+      "netLoss": 0,
+      "sourceYear": 1977,
+      "yearIndex": 1
+    },
+    {
+      "cededLoss": 0,
+      "eventCount": 0,
+      "grossLoss": 0,
+      "netLoss": 0,
+      "sourceYear": 1974,
+      "yearIndex": 2
+    },
+    {
+      "cededLoss": 0,
+      "eventCount": 0,
+      "grossLoss": 0,
+      "netLoss": 0,
+      "sourceYear": 1978,
+      "yearIndex": 3
+    },
+    {
+      "cededLoss": 0,
+      "eventCount": 0,
+      "grossLoss": 0,
+      "netLoss": 0,
+      "sourceYear": 1975,
+      "yearIndex": 4
+    },
+    {
+      "cededLoss": 0,
+      "eventCount": 0,
+      "grossLoss": 0,
+      "netLoss": 0,
+      "sourceYear": 1973,
+      "yearIndex": 5
+    }
+  ],
+  "historicalYearsCount": 11,
+  "locationCount": 1,
+  "portfolioId": "pf_golden_miami",
+  "riskMetrics": {
+    "aep": [
+      {
+        "bondPayout": 0,
+        "grossLoss": 0,
+        "netLoss": 0,
+        "returnPeriodYears": 10
+      },
+      {
+        "bondPayout": 0,
+        "grossLoss": 0,
+        "netLoss": 0,
+        "returnPeriodYears": 50
+      },
+      {
+        "bondPayout": 0,
+        "grossLoss": 0,
+        "netLoss": 0,
+        "returnPeriodYears": 100
+      }
+    ],
+    "attachmentProbability": 0,
+    "currency": "USD",
+    "exhaustionProbability": 0,
+    "expectedLoss": 0,
+    "expectedLossRate": 0,
+    "oep": [
+      {
+        "bondPayout": 0,
+        "grossLoss": 0,
+        "netLoss": 0,
+        "returnPeriodYears": 10
+      },
+      {
+        "bondPayout": 0,
+        "grossLoss": 0,
+        "netLoss": 0,
+        "returnPeriodYears": 50
+      },
+      {
+        "bondPayout": 0,
+        "grossLoss": 0,
+        "netLoss": 0,
+        "returnPeriodYears": 100
+      }
+    ],
+    "stdDevLoss": 0,
+    "tvar99": 0,
+    "var99": 0
+  },
+  "simulatedYears": 200,
+  "summaryStats": {
+    "maxLoss": 0,
+    "p50Loss": 0,
+    "p90Loss": 0,
+    "p99Loss": 0
+  },
+  "totalTiv": 8000000
+}

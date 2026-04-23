@@ -128,4 +128,25 @@ object GoldenCompare {
     case arr: ujson.Arr => ujson.Arr.from(arr.value.map(normalize))
     case other          => other
   }
+
+  /** Load a golden file from the test resources directory.
+    *
+    * Set CANOPY_GOLDEN_UPDATE=1 to write the golden instead of reading it
+    * (for bootstrapping or after an intentional numerical change). The
+    * writer always writes through `render` so goldens are normalised.
+    */
+  def readOrUpdate(path: java.nio.file.Path, produce: => Value): Value = {
+    val updateRequested =
+      Option(System.getenv("CANOPY_GOLDEN_UPDATE")).exists(v => v == "1" || v.equalsIgnoreCase("true"))
+    val exists = java.nio.file.Files.exists(path)
+    if (updateRequested || !exists) {
+      val rendered = render(produce)
+      java.nio.file.Files.createDirectories(path.getParent)
+      java.nio.file.Files.write(path, (rendered + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8))
+      ujson.read(rendered)
+    } else {
+      val bytes = java.nio.file.Files.readAllBytes(path)
+      ujson.read(new String(bytes, java.nio.charset.StandardCharsets.UTF_8))
+    }
+  }
 }
