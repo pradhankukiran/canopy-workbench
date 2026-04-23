@@ -8,7 +8,7 @@
   "properties": {
     "portfolioId": {
       "type": "string",
-      "pattern": "^pf_[a-z0-9]+$"
+      "pattern": "^pf_[a-z0-9_]+$"
     },
     "name": {
       "type": "string",
@@ -31,7 +31,7 @@
         "properties": {
           "locationId": {
             "type": "string",
-            "pattern": "^loc_[a-z0-9]+$"
+            "pattern": "^loc_[a-z0-9_]+$"
           },
           "country": {
             "type": "string",

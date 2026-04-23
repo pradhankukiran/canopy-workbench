@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "v2",
+  "portfolioId": "pf_demo_v2001",
+  "name": "Gulf Coast Property Portfolio (v2 enriched)",
+  "currency": "USD",
+  "asOfDate": "2026-01-01",
+  "locations": [
+    {
+      "locationId": "loc_v2p1",
+      "country": "US",
+      "region": "TX",
+      "latitude": 29.74,
+      "longitude": -95.37,
+      "perilSet": ["WIND", "HAIL"],
+      "tiv": 15000000,
+      "deductible": 250000,
+      "limit": 12000000,
+      "occupancy": "Commercial",
+      "occupancyClass": "commercial_office",
+      "constructionClass": "steel_frame",
+      "yearBuilt": 2004,
+      "numberOfStories": 8,
+      "codeEra": "modern_code",
+      "roofShape": "flat",
+      "roofCover": "membrane",
+      "surfaceRoughnessClass": "dense_urban",
+      "perilDeductibles": {
+        "WIND": 250000,
+        "HAIL": 100000
+      },
+      "sublimits": {
+        "HAIL": 2000000
+      }
+    },
+    {
+      "locationId": "loc_v2p2",
+      "country": "US",
+      "region": "LA",
+      "latitude": 29.95,
+      "longitude": -90.07,
+      "perilSet": ["WIND", "FLOOD", "STORM_SURGE"],
+      "tiv": 9000000,
+      "deductible": 150000,
+      "limit": 7000000,
+      "occupancy": "Industrial",
+      "occupancyClass": "industrial_heavy",
+      "constructionClass": "reinforced_concrete",
+      "yearBuilt": 1987,
+      "numberOfStories": 3,
+      "codeEra": "legacy_code",
+      "surfaceRoughnessClass": "suburban",
+      "perilDeductibles": {
+        "WIND": 150000,
+        "STORM_SURGE": 0.05,
+        "FLOOD": 0.05
+      },
+      "sublimits": {
+        "STORM_SURGE": 1500000,
+        "FLOOD": 1500000
+      }
+    },
+    {
+      "locationId": "loc_v2p3",
+      "country": "US",
+      "region": "FL",
+      "latitude": 25.77,
+      "longitude": -80.19,
+      "perilSet": ["WIND"],
+      "tiv": 8000000,
+      "deductible": 100000,
+      "limit": 6500000,
+      "occupancy": "Residential",
+      "occupancyClass": "residential_single_family",
+      "constructionClass": "masonry_reinforced",
+      "yearBuilt": 2015,
+      "numberOfStories": 2,
+      "codeEra": "high_code",
+      "roofShape": "hip",
+      "roofCover": "clay_tile",
+      "surfaceRoughnessClass": "suburban"
+    }
+  ],
+  "metadata": {
+    "source": "v2 demo fixture",
+    "enriched": false
+  }
+}
