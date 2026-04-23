@@ -53,7 +53,15 @@ object Hurdat2PropertyCatPricingYltSimulator {
       minDecayScaleKm: Double = 60d,
       radiusToDecayScaleRatio: Double = 1.15d,
       nauticalMileKm: Double = 1.852d,
-      // Vulnerability curve (single power curve; phase 2 replaces with Hazus).
+      // Vulnerability curve selection. Hazus (phase 2.9) looks up a tabular
+      // MDR curve from the bundled CSV keyed on
+      //   (constructionClass, occupancyClass, storiesBucket, codeEra)
+      // falling back through coarser keys when an exact match is missing.
+      // Setting useHazusCurves=false reverts to the phase-1 single power
+      // curve defined by the `minDamagingWindKt` / `saturationWindKt` /
+      // `vulnerabilityExponent` parameters below.
+      useHazusCurves: Boolean = true,
+      // Legacy single power-curve params (used when useHazusCurves=false).
       minDamagingWindKt: Double = 35d,
       saturationWindKt: Double = 130d,
       vulnerabilityExponent: Double = 2.25d,

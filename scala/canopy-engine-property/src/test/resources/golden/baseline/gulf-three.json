@@ -3,40 +3,40 @@
     {
       "cededLoss": 150000,
       "eventCount": 1,
-      "grossLoss": 2407787.032181581,
-      "netLoss": 2257787.032181581,
+      "grossLoss": 1197331.3088766858,
+      "netLoss": 1047331.3088766858,
       "sourceYear": 1977,
       "yearIndex": 1
     },
     {
       "cededLoss": 150000,
       "eventCount": 1,
-      "grossLoss": 5663449.822571083,
-      "netLoss": 5513449.822571083,
+      "grossLoss": 3717198.786563866,
+      "netLoss": 3567198.786563866,
       "sourceYear": 1974,
       "yearIndex": 2
     },
     {
       "cededLoss": 150000,
       "eventCount": 1,
-      "grossLoss": 4477647.912639841,
-      "netLoss": 4327647.912639841,
+      "grossLoss": 2843725.8060996966,
+      "netLoss": 2693725.8060996966,
       "sourceYear": 1978,
       "yearIndex": 3
     },
     {
       "cededLoss": 150000,
       "eventCount": 1,
-      "grossLoss": 1239458.6432094306,
-      "netLoss": 1089458.6432094306,
+      "grossLoss": 497332.57214918284,
+      "netLoss": 347332.57214918284,
       "sourceYear": 1975,
       "yearIndex": 4
     },
     {
       "cededLoss": 150000,
       "eventCount": 1,
-      "grossLoss": 3915455.1537637073,
-      "netLoss": 3765455.1537637073,
+      "grossLoss": 2405049.2907014904,
+      "netLoss": 2255049.2907014904,
       "sourceYear": 1973,
       "yearIndex": 5
     }
@@ -48,58 +48,58 @@
     "aep": [
       {
         "bondPayout": 141000,
-        "grossLoss": 5323642.833216818,
-        "netLoss": 5182642.833216818,
+        "grossLoss": 3494166.8593700337,
+        "netLoss": 3353166.8593700337,
         "returnPeriodYears": 10
       },
       {
         "bondPayout": 141000,
-        "grossLoss": 5323642.833216818,
-        "netLoss": 5182642.833216818,
+        "grossLoss": 3494166.8593700337,
+        "netLoss": 3353166.8593700337,
         "returnPeriodYears": 50
       },
       {
         "bondPayout": 141000,
-        "grossLoss": 5323642.833216818,
-        "netLoss": 5182642.833216818,
+        "grossLoss": 3494166.8593700337,
+        "netLoss": 3353166.8593700337,
         "returnPeriodYears": 100
       }
     ],
     "attachmentProbability": 1,
     "currency": "USD",
     "exhaustionProbability": 0.11,
-    "expectedLoss": 2718072.8737750566,
-    "expectedLossRate": 0.08493977730547052,
+    "expectedLoss": 1482134.2089233974,
+    "expectedLossRate": 0.046316694028856166,
     "oep": [
       {
         "bondPayout": 150000,
-        "grossLoss": 5663449.822571082,
-        "netLoss": 5513449.822571084,
+        "grossLoss": 3717198.786563866,
+        "netLoss": 3567198.786563866,
         "returnPeriodYears": 10
       },
       {
         "bondPayout": 150000,
-        "grossLoss": 5663449.822571083,
-        "netLoss": 5513449.822571083,
+        "grossLoss": 3717198.786563866,
+        "netLoss": 3567198.786563866,
         "returnPeriodYears": 50
       },
       {
         "bondPayout": 150000,
-        "grossLoss": 5663449.822571083,
-        "netLoss": 5513449.822571083,
+        "grossLoss": 3717198.786563866,
+        "netLoss": 3567198.786563866,
         "returnPeriodYears": 100
       }
     ],
-    "stdDevLoss": 1441313.3519869156,
-    "tvar99": 5513449.822571083,
-    "var99": 5513449.822571083
+    "stdDevLoss": 1045381.0554450348,
+    "tvar99": 3567198.7865638663,
+    "var99": 3567198.786563866
   },
   "simulatedYears": 200,
   "summaryStats": {
-    "maxLoss": 5513449.822571083,
-    "p50Loss": 2257787.032181581,
-    "p90Loss": 5513449.822571084,
-    "p99Loss": 5513449.822571083
+    "maxLoss": 3567198.786563866,
+    "p50Loss": 1047331.3088766858,
+    "p90Loss": 3567198.786563866,
+    "p99Loss": 3567198.786563866
   },
   "totalTiv": 32000000
 }
