@@ -50,15 +50,17 @@ object Hurdat2PropertyCatPricingYltCli {
       runInput <- parseRunInput(cliArgs)
       _ = emitHeartbeat("phase" -> ujson.Str("loading-hurdat2"), "fraction" -> ujson.Num(0.10))
       dataset <- Hurdat2Parser.parseFile(runInput.hurdat2Path).left.map(_.toString)
+      _ = emitHeartbeat("phase" -> ujson.Str("enriching-portfolio"), "fraction" -> ujson.Num(0.13))
+      enrichment = PortfolioEnrichment.enrich(runInput.portfolio)
       _ = emitHeartbeat("phase" -> ujson.Str("simulating"), "fraction" -> ujson.Num(0.15))
       result = Hurdat2PropertyCatPricingYltSimulator.simulate(
         dataset,
-        runInput.portfolio,
+        enrichment.portfolio,
         runInput.params,
         onProgress = makeSimulatorProgressReporter()
       )
       _ = emitHeartbeat("phase" -> ujson.Str("post-processing"), "fraction" -> ujson.Num(0.85))
-      bundle = buildPosteriorBundle(runInput, result)
+      bundle = buildPosteriorBundle(runInput, result, enrichment.log)
       rendered = ujson.write(bundle, indent = 2)
       _ = emitHeartbeat("phase" -> ujson.Str("writing-output"), "fraction" -> ujson.Num(0.95))
       _ <- writeOutput(rendered, cliArgs.outputPath)
@@ -313,7 +315,19 @@ object Hurdat2PropertyCatPricingYltCli {
         limit = optionalDouble(obj, "limit").getOrElse(tiv.get),
         occupancy = optionalString(obj, "occupancy"),
         perilSet = optionalStringVector(obj, "perilSet").getOrElse(Vector("WIND")),
-        country = optionalString(obj, "country")
+        country = optionalString(obj, "country"),
+        region = optionalString(obj, "region"),
+        // v2 fields (phase 2.8). All optional; PortfolioEnrichment fills
+        // missing values with country/region defaults and emits a log
+        // entry per defaulted field.
+        occupancyClass = optionalString(obj, "occupancyClass"),
+        constructionClass = optionalString(obj, "constructionClass"),
+        yearBuilt = optionalInt(obj, "yearBuilt"),
+        numberOfStories = optionalInt(obj, "numberOfStories"),
+        codeEra = optionalString(obj, "codeEra"),
+        roofShape = optionalString(obj, "roofShape"),
+        roofCover = optionalString(obj, "roofCover"),
+        surfaceRoughnessClass = optionalString(obj, "surfaceRoughnessClass")
       )
     )
   }
@@ -336,7 +350,11 @@ object Hurdat2PropertyCatPricingYltCli {
     candidates.headOption.toRight("missing property pricing parameters: expected moduleParameters.propertyCatPricing")
   }
 
-  private def buildPosteriorBundle(runInput: RunInput, result: Result): ujson.Obj = {
+  private def buildPosteriorBundle(
+      runInput: RunInput,
+      result: Result,
+      enrichmentLog: PortfolioEnrichment.EnrichmentLog = PortfolioEnrichment.EnrichmentLog.empty
+  ): ujson.Obj = {
     val calibrationAttempt = calibrateWithRainier(runInput, result)
     val calibrationApplied = calibrationAttempt.toOption
     val scaleFactor = calibrationApplied.map(_.scaleFactor).getOrElse(1d)
@@ -382,6 +400,19 @@ object Hurdat2PropertyCatPricingYltCli {
       "returnPeriodPricing" -> ujson.Arr.from(riskMetrics.oep.map(returnPeriodPointJson))
     )
     pricingOutput("rainierCalibration") = rainierCalibrationJson(runInput, calibrationAttempt)
+
+    // Expose the phase-2.8 enrichment log so underwriters can see which
+    // portfolio fields were filled in by defaults.
+    if (enrichmentLog.entries.nonEmpty) {
+      pricingOutput("enrichmentLog") = ujson.Arr.from(enrichmentLog.entries.map { entry =>
+        ujson.Obj(
+          "locationId" -> ujson.Str(entry.locationId),
+          "field" -> ujson.Str(entry.field),
+          "assumedValue" -> ujson.Str(entry.assumedValue),
+          "reason" -> ujson.Str(entry.reason)
+        )
+      })
+    }
 
     val bundle = ujson.Obj(
       "runId" -> ujson.Str(runInput.runId),

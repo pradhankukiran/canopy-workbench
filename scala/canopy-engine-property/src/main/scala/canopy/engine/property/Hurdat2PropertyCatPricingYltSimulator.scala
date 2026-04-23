@@ -115,7 +115,20 @@ object Hurdat2PropertyCatPricingYltSimulator {
       limit: Double,
       occupancy: Option[String],
       perilSet: Vector[String],
-      country: Option[String]
+      country: Option[String],
+      region: Option[String] = None,
+      // v2 schema fields (phase 2.8). All optional so v1 portfolios parse
+      // unchanged. enrichPortfolio() fills missing values from country/
+      // region defaults and records each defaulted field in the run's
+      // enrichmentLog so reviewers can audit what was assumed.
+      occupancyClass: Option[String] = None,
+      constructionClass: Option[String] = None,
+      yearBuilt: Option[Int] = None,
+      numberOfStories: Option[Int] = None,
+      codeEra: Option[String] = None,
+      roofShape: Option[String] = None,
+      roofCover: Option[String] = None,
+      surfaceRoughnessClass: Option[String] = None
   )
 
   final case class PropertyPortfolio(
