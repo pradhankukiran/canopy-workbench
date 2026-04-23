@@ -41,6 +41,19 @@ object Hurdat2PropertyCatPricingYltSimulator {
       // factor keyed on surfaceRoughnessClass. Disabling reverts to the
       // open-water baseline (factor = 1.0) for every site.
       useSurfaceRoughness: Boolean = true,
+      // Phase 2.5b: Kaplan-DeMaria 1995 overland decay. When enabled, a
+      // storm that has made landfall has its V_max reduced by the
+      // asymptotic-decay formula V(t) = V_b + (R V_0 - V_b) e^(-at) for
+      // each track point currently over land; hoursSinceLandfall is
+      // tracked across consecutive track points using the LandMask.
+      // Disabling produces open-ocean winds everywhere (equivalent to
+      // the phase-2.4 behavior).
+      useOverlandDecay: Boolean = true,
+      // LandMask selection. When true uses the built-in coarse US coast
+      // polygons (good enough for the indicative pricing demo); phase-3
+      // swaps in a Natural Earth-based resolver loaded via the
+      // DataRegistry.
+      useHardcodedLandMask: Boolean = true,
       rmaxFromR34Factor: Double = 0.35d,
       // Rmax climatology. "willoughby2006" uses Willoughby, Darling & Rahn
       // 2006:  Rmax = 46.4 * exp(-0.0155 V_max_ms + 0.0169 |lat|) - the

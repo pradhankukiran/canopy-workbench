@@ -22,22 +22,43 @@ object Windfield {
 
   /** Maximum wind at a location across all tropical-system track points.
     *
-    * Phase 2.4: we also compute each point's translation speed and
-    * heading from the previous track fix (by differencing the Geodesy
-    * positions and the HURDAT2 datetimes) so the asymmetry correction
-    * can be applied inside `attenuatedWindKt`. The first fix carries no
-    * predecessor, so its translation context is None; successive fixes
-    * inherit the diff from their immediate predecessor.
+    * Phase 2.4: we compute each point's translation speed and heading
+    * from the previous track fix (by differencing the Geodesy positions
+    * and the HURDAT2 datetimes) so the asymmetry correction can be
+    * applied inside `attenuatedWindKt`.
+    *
+    * Phase 2.5b: we also track landfall state across consecutive points
+    * using the configured LandMask. Once a storm crosses the coast, the
+    * per-point context carries `hoursSinceLandfall` so the Kaplan-DeMaria
+    * decay can be applied to V_max inside attenuatedWindKt. A storm that
+    * re-emerges over water resets landfall tracking.
     */
   def maxSiteWindKt(
       track: Vector[Hurdat2TrackPoint],
       loc: PropertyLocation,
       pp: PricingParameters
   ): Double = {
-    val withContext = track.zipWithIndex.map { case (point, idx) =>
-      val prev = if (idx == 0) None else Some(track(idx - 1))
-      (point, translationContext(prev, point, pp))
+    val landMask = LandMask.resolve(pp.useHardcodedLandMask)
+
+    // Fold through the track, maintaining (prev, hoursSinceLandfall).
+    val annotated = track.zipWithIndex.foldLeft(
+      (Option.empty[Hurdat2TrackPoint], Option.empty[Double], Vector.empty[(Hurdat2TrackPoint, TrackContext)])
+    ) { case ((prev, overLandHours, acc), (point, _)) =>
+      val translation = translationContext(prev, point, pp)
+      val dtHours = prev.map(hoursBetween(_, point)).getOrElse(0d)
+      val nowOverLand = landMask.isLand(point.latitude, point.longitude)
+      val updatedOverLandHours =
+        if (!nowOverLand) None
+        else overLandHours.map(_ + math.max(0d, dtHours)).orElse(Some(0d))
+      val ctx = TrackContext(
+        headingDeg = translation.headingDeg,
+        speedKt = translation.speedKt,
+        overLandHours = updatedOverLandHours
+      )
+      (Some(point), updatedOverLandHours, acc :+ (point, ctx))
     }
+    val withContext = annotated._3
+
     withContext.iterator
       .filter { case (point, _) => isTropicalSystem(point.status) }
       .map { case (point, ctx) => attenuatedWindKt(point, ctx, loc, pp) }
@@ -81,6 +102,21 @@ object Windfield {
     val empty: TranslationContext = TranslationContext(None, None)
   }
 
+  /** Per-track-point state carried into attenuatedWindKt: translation
+    * heading + speed (for the Schwerdt asymmetry term) and the number
+    * of hours the storm has been continuously over land (for Kaplan-
+    * DeMaria overland decay). When the storm is currently over water,
+    * overLandHours is None. */
+  final case class TrackContext(
+      headingDeg: Option[Double],
+      speedKt: Option[Double],
+      overLandHours: Option[Double]
+  )
+
+  object TrackContext {
+    val empty: TrackContext = TrackContext(None, None, None)
+  }
+
   /** HURDAT2 status codes for tropical cyclone states. TD=tropical depression,
     * TS=tropical storm, HU=hurricane, TY=typhoon (Pacific), ST=subtropical,
     * TC=other tropical. Extratropical (EX), low (LO), and disturbance (DB/WV)
@@ -102,11 +138,23 @@ object Windfield {
     */
   def attenuatedWindKt(
       point: Hurdat2TrackPoint,
-      ctx: TranslationContext,
+      ctx: TrackContext,
       loc: PropertyLocation,
       pp: PricingParameters
   ): Double = {
     val distanceKm = Geodesy.haversineKm(loc.latitude, loc.longitude, point.latitude, point.longitude)
+
+    // Phase 2.5b: apply Kaplan-DeMaria overland decay to V_max before
+    // plugging it into the Holland profile. A point currently over water
+    // (overLandHours == None) keeps its original V_max; an inland point
+    // is decayed toward the 26.7 kt background wind.
+    val effectiveVMaxKt: Double =
+      if (pp.useOverlandDecay) {
+        ctx.overLandHours match {
+          case Some(hours) => OverlandDecay.decayedWindKt(point.maxWindKt.toDouble, hours)
+          case None        => point.maxWindKt.toDouble
+        }
+      } else point.maxWindKt.toDouble
 
     val symmetricKt =
       if (pp.useHollandWindfield) {
@@ -116,14 +164,14 @@ object Windfield {
             HollandWindfield.surfaceWindKt(
               rKm = distanceKm,
               rMaxKm = rMaxKm,
-              vMaxKt = point.maxWindKt.toDouble,
+              vMaxKt = effectiveVMaxKt,
               pcMb = pc.toDouble,
               latitudeDeg = point.latitude
             )
-          case _ => exponentialDecayKt(distanceKm, point, pp)
+          case _ => exponentialDecayKt(distanceKm, point, pp, effectiveVMaxKt)
         }
       } else {
-        exponentialDecayKt(distanceKm, point, pp)
+        exponentialDecayKt(distanceKm, point, pp, effectiveVMaxKt)
       }
 
     val asymmetricKt =
@@ -155,7 +203,8 @@ object Windfield {
   def exponentialDecayKt(
       distanceKm: Double,
       point: Hurdat2TrackPoint,
-      pp: PricingParameters
+      pp: PricingParameters,
+      vMaxKt: Double = Double.NaN
   ): Double = {
     val windRadiusKm = point.windRadii34KtNm
       .map(averageRadiiNm)
@@ -164,7 +213,8 @@ object Windfield {
       .getOrElse(pp.defaultWindRadiusKm)
     val decayScaleKm = math.max(pp.minDecayScaleKm, windRadiusKm * pp.radiusToDecayScaleRatio)
     val attenuation = math.exp(-distanceKm / decayScaleKm)
-    point.maxWindKt.toDouble * attenuation
+    val base = if (vMaxKt.isNaN) point.maxWindKt.toDouble else vMaxKt
+    base * attenuation
   }
 
   /** Average of the four quadrant radii. When HURDAT2 has partial quadrant
