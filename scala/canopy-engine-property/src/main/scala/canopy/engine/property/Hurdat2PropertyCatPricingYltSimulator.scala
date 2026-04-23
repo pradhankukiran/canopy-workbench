@@ -66,6 +66,13 @@ object Hurdat2PropertyCatPricingYltSimulator {
       // curve defined by the `minDamagingWindKt` / `saturationWindKt` /
       // `vulnerabilityExponent` parameters below.
       useHazusCurves: Boolean = true,
+      // Phase 2.10: event-level secondary uncertainty. When true, each
+      // (event x location) MDR is resampled from a Beta distribution with
+      // mean = Hazus MDR and CV = secondaryUncertaintyCv. RNG is seeded
+      // from params.randomSeed so runs are reproducible. Disabling gives
+      // deterministic point MDRs from Hazus.
+      useSecondaryUncertainty: Boolean = true,
+      secondaryUncertaintyCv: Double = 0.35d,
       // Legacy single power-curve params (used when useHazusCurves=false).
       minDamagingWindKt: Double = 35d,
       saturationWindKt: Double = 130d,
@@ -437,9 +444,19 @@ object Hurdat2PropertyCatPricingYltSimulator {
     if (peakStormWind <= 0) return None
 
     val pp = params.pricingParameters
+    // A per-storm RNG seeded from (runSeed, stormId, year) so the
+    // simulation is deterministic under the configured randomSeed even
+    // though each event draws independent Beta samples per location.
+    // Hashing the storm id stabilises the seed against storm-ordering
+    // permutations, so reordering events in the dataset doesn't shift
+    // results.
+    val stormSeed = params.randomSeed.toLong * 1099511628211L ^
+      storm.header.id.raw.hashCode.toLong * 31L ^
+      storm.year.toLong
+    val rng = new Random(stormSeed)
     val losses = portfolio.locations.map { loc =>
       val siteWind = Windfield.maxSiteWindKt(storm.track, loc, pp)
-      val groundUp = Vulnerability.modeledGroundUpLoss(loc, siteWind, pp)
+      val groundUp = Vulnerability.modeledGroundUpLoss(loc, siteWind, pp, rng)
       val insured = SiteTerms.modeledInsuredLoss(loc, groundUp)
       val ceded = math.max(0d, groundUp - insured)
       (siteWind, groundUp, ceded, insured)
