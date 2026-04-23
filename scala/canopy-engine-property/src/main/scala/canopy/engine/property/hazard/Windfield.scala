@@ -39,15 +39,47 @@ object Windfield {
     s == "TD" || s == "TS" || s == "HU" || s == "TY" || s == "ST" || s == "TC"
   }
 
-  /** Current attenuation: exponential decay of maxWindKt with distance, using
-    * the 34-kt radius as the decay scale (or a fallback default radius when
-    * the HURDAT2 record lacks wind-radii data, which is common pre-2004). */
+  /** Site-level wind at a single track point. Dispatches on the pricing
+    * parameter flag: Holland radial profile (default, phase 2.2) or the
+    * legacy exponential-decay fallback. The Holland branch also degrades
+    * to exponential decay when the track point lacks central pressure,
+    * since Holland requires delta-P.
+    */
   def attenuatedWindKt(
       point: Hurdat2TrackPoint,
       loc: PropertyLocation,
       pp: PricingParameters
   ): Double = {
     val distanceKm = Geodesy.haversineKm(loc.latitude, loc.longitude, point.latitude, point.longitude)
+
+    if (pp.useHollandWindfield) {
+      point.minPressureMb match {
+        case Some(pc) if pc > 0 && pc < HollandWindfield.EnvironmentalPressureMb =>
+          val rMaxKm = RmaxEstimator.estimateKm(point, pp)
+          HollandWindfield.surfaceWindKt(
+            rKm = distanceKm,
+            rMaxKm = rMaxKm,
+            vMaxKt = point.maxWindKt.toDouble,
+            pcMb = pc.toDouble,
+            latitudeDeg = point.latitude
+          )
+        case _ =>
+          exponentialDecayKt(distanceKm, point, pp)
+      }
+    } else {
+      exponentialDecayKt(distanceKm, point, pp)
+    }
+  }
+
+  /** Phase-1 exponential-decay fallback. Kept for storms missing the
+    * central-pressure column and for `useHollandWindfield=false` runs
+    * (regression-testing the old numerics, never the recommended default).
+    */
+  def exponentialDecayKt(
+      distanceKm: Double,
+      point: Hurdat2TrackPoint,
+      pp: PricingParameters
+  ): Double = {
     val windRadiusKm = point.windRadii34KtNm
       .map(averageRadiiNm)
       .filter(_ > 0d)

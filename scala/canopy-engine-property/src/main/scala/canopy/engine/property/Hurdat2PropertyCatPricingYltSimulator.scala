@@ -21,7 +21,19 @@ object Hurdat2PropertyCatPricingYltSimulator {
     * are the surface they will replace.
     */
   final case class PricingParameters(
-      // Wind attenuation (fallback heuristic; phase 2 replaces with Holland).
+      // Hazard model selection. When true (default), the Holland (1980)
+      // radial profile is used with Rmax either from HURDAT2 wind radii
+      // (~35% of the 34-kt radius) or the V_max climatology below. When
+      // false, the phase-1 exponential-decay fallback is used. Phase 2.3
+      // replaces the climatology with Willoughby 2006.
+      useHollandWindfield: Boolean = true,
+      rmaxFromR34Factor: Double = 0.35d,
+      rmaxClimatologyInterceptKm: Double = 45d,
+      rmaxClimatologySlopeKmPerKt: Double = 0.2d,
+      rmaxMinKm: Double = 15d,
+      rmaxMaxKm: Double = 80d,
+      // Legacy exponential-decay params (used when useHollandWindfield=false
+      // or as a last-resort for storms missing central-pressure data).
       defaultWindRadiusKm: Double = 140d,
       minDecayScaleKm: Double = 60d,
       radiusToDecayScaleRatio: Double = 1.15d,
