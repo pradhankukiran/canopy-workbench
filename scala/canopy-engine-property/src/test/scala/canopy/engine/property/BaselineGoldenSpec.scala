@@ -9,6 +9,7 @@ import java.time.{LocalDate, LocalTime}
 
 import Hurdat2PropertyCatPricingYltSimulator._
 import canopy.engine.property.financial.{Layer, LayerTower, PremiumTerms}
+import canopy.engine.property.ylt.PosteriorBands
 
 /** Baseline golden files for the phase-1 pricing engine.
   *
@@ -255,6 +256,48 @@ class BaselineGoldenSpec extends AnyFunSuite {
     val goldenPath = goldenDir.resolve("gulf-three-tower.json")
     val expected = GoldenCompare.readOrUpdate(goldenPath, actualJson)
     val diffs = GoldenCompare.diff(actualJson, expected, GoldenCompare.Tolerance.default)
+    assert(diffs.isEmpty, diffs.mkString("\n"))
+  }
+
+  test("golden: gulf-three posterior bands at multiple RPs") {
+    val result = Hurdat2PropertyCatPricingYltSimulator.simulate(canonicalDataset, gulfThreePortfolio, commonParams)
+    val rng = new scala.util.Random(commonParams.randomSeed.toLong ^ 0x42L)
+    val aepBands = PosteriorBands.compute(
+      annualLosses = result.simulatedYears.map(_.grossLoss),
+      returnPeriodsYears = Vector(10, 50, 100),
+      bootstrapSamples = 500,
+      scalePosterior = None,
+      rng = rng
+    )
+    val oepBands = PosteriorBands.compute(
+      annualLosses = result.simulatedYears.map(_.maxEventGrossLoss),
+      returnPeriodsYears = Vector(10, 50, 100),
+      bootstrapSamples = 500,
+      scalePosterior = None,
+      rng = rng
+    )
+
+    val json = ujson.Obj(
+      "aep" -> ujson.Arr.from(aepBands.map { b =>
+        ujson.Obj(
+          "returnPeriodYears" -> ujson.Num(b.returnPeriodYears),
+          "mean" -> ujson.Num(b.mean),
+          "p05" -> ujson.Num(b.p05),
+          "p95" -> ujson.Num(b.p95)
+        )
+      }),
+      "oep" -> ujson.Arr.from(oepBands.map { b =>
+        ujson.Obj(
+          "returnPeriodYears" -> ujson.Num(b.returnPeriodYears),
+          "mean" -> ujson.Num(b.mean),
+          "p05" -> ujson.Num(b.p05),
+          "p95" -> ujson.Num(b.p95)
+        )
+      })
+    )
+    val goldenPath = goldenDir.resolve("gulf-three-bands.json")
+    val expected = GoldenCompare.readOrUpdate(goldenPath, json)
+    val diffs = GoldenCompare.diff(json, expected, GoldenCompare.Tolerance.default)
     assert(diffs.isEmpty, diffs.mkString("\n"))
   }
 }

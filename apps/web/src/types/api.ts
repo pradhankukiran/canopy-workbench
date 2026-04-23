@@ -274,6 +274,13 @@ export interface MarginalPortfolioImpactOutput {
   [key: string]: unknown;
 }
 
+export interface BandPoint {
+  returnPeriodYears?: number;
+  mean?: number;
+  p05?: number;
+  p95?: number;
+}
+
 export interface PropertyCatPricingYltOutput {
   currency?: string;
   yltRows?: unknown[];
@@ -296,6 +303,20 @@ export interface PropertyCatPricingYltOutput {
     returnPeriodYears?: number;
     tvar?: number;
   }>;
+  // Phase 4: per-quantile posterior credible bands on OEP/AEP.
+  // source = "bootstrap+rainier" when Rainier converged, else "bootstrap".
+  oepBands?: {
+    source?: string;
+    bootstrapSamples?: number;
+    gross?: BandPoint[];
+    net?: BandPoint[];
+  };
+  aepBands?: {
+    source?: string;
+    bootstrapSamples?: number;
+    gross?: BandPoint[];
+    net?: BandPoint[];
+  };
   layerAttachmentFrequency?: number;
   layerExhaustionFrequency?: number;
   enrichmentLog?: Array<{
