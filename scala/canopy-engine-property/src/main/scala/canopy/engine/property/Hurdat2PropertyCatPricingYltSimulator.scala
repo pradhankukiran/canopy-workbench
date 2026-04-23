@@ -169,10 +169,15 @@ object Hurdat2PropertyCatPricingYltSimulator {
       summaryStats: SummaryStats
   )
 
-  def simulate(dataset: Hurdat2Dataset, portfolio: PropertyPortfolio, rawParams: Params): Result = {
+  def simulate(
+      dataset: Hurdat2Dataset,
+      portfolio: PropertyPortfolio,
+      rawParams: Params,
+      onProgress: Double => Unit = _ => ()
+  ): Result = {
     val params = rawParams
     val normalizedPortfolio = normalizePortfolio(portfolio, params.normalizedCurrency)
-    val historicalYears = buildHistoricalYears(dataset, normalizedPortfolio, params)
+    val historicalYears = buildHistoricalYears(dataset, normalizedPortfolio, params, onProgress)
     val simulatedYears = simulateYears(historicalYears, params)
     val riskMetrics = computeRiskMetrics(simulatedYears, normalizedPortfolio, params)
     val summaryStats = computeSummaryStats(simulatedYears, params)
@@ -236,18 +241,20 @@ object Hurdat2PropertyCatPricingYltSimulator {
   private def buildHistoricalYears(
       dataset: Hurdat2Dataset,
       portfolio: PropertyPortfolio,
-      params: Params
+      params: Params,
+      onProgress: Double => Unit
   ): Vector[HistoricalYearLoss] = {
     val years = contiguousYears(dataset)
     val stormsByYear = dataset.stormsByYear.withDefaultValue(Vector.empty)
 
-    val rows = years.map { year =>
+    val total = years.size.max(1)
+    val rows = years.zipWithIndex.map { case (year, idx) =>
       val eventLosses =
         stormsByYear(year)
           .flatMap(storm => stormLoss(storm, portfolio, params))
           .sortBy(event => (event.stormId, event.stormName))
 
-      HistoricalYearLoss(
+      val row = HistoricalYearLoss(
         sourceYear = year,
         eventCount = eventLosses.iterator.map(_.eventCountContribution).sum,
         grossLoss = eventLosses.iterator.map(_.grossLoss).sum,
@@ -255,6 +262,8 @@ object Hurdat2PropertyCatPricingYltSimulator {
         netLoss = eventLosses.iterator.map(_.netLoss).sum,
         events = eventLosses
       )
+      onProgress((idx + 1).toDouble / total.toDouble)
+      row
     }
 
     if (rows.nonEmpty) rows

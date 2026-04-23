@@ -44,7 +44,6 @@ interface WorkerConfig {
   redisPrefix: string;
   runQueueName: string;
   concurrency: number;
-  stepDelayMs: number;
   databaseUrl?: string;
   propertyPricingScalaCliCommand: string;
   propertyPricingScalaCliTimeoutMs: number;
@@ -86,7 +85,6 @@ function readConfig(): WorkerConfig {
     redisPrefix: process.env.CANOPY_REDIS_PREFIX ?? DEFAULT_REDIS_PREFIX,
     runQueueName: process.env.CANOPY_RUN_QUEUE ?? DEFAULT_RUN_QUEUE_NAME,
     concurrency: Math.max(1, readIntEnv("WORKER_CONCURRENCY", 2)),
-    stepDelayMs: Math.max(50, readIntEnv("WORKER_STEP_DELAY_MS", 350)),
     databaseUrl: process.env.DATABASE_URL,
     propertyPricingScalaCliCommand: readStringEnv(
       "WORKER_PROPERTY_PRICING_SCALA_CLI_COMMAND",
@@ -104,10 +102,6 @@ function readConfig(): WorkerConfig {
     mpiScalaCliTimeoutMs: Math.max(1_000, readIntEnv("WORKER_MPI_SCALA_CLI_TIMEOUT_MS", 120_000)),
     mpiScalaCliCwd: readStringEnv("WORKER_MPI_SCALA_CLI_CWD", DEFAULT_REPO_ROOT)
   };
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 type AnalysisType = "pricing" | "risk" | "sensitivity";
@@ -358,6 +352,52 @@ interface IlsScalaCliInvocationParams {
   workspaceId: string;
   jobId: string;
   payload: Record<string, unknown>;
+  onProgress?: (event: EngineProgressEvent) => void | Promise<void>;
+}
+
+export interface EngineProgressEvent {
+  fraction?: number;
+  phase?: string;
+  simulatorFraction?: number;
+}
+
+/** Parse a single stderr line as an engine heartbeat. Returns undefined for
+  * lines that are not NDJSON-shaped `{"kind":"progress", ...}` events, so
+  * plain-text log lines pass through silently. Exported for unit tests.
+  */
+export function parseHeartbeatLine(line: string): EngineProgressEvent | undefined {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("{")) return undefined;
+  try {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object" || parsed.kind !== "progress") return undefined;
+    return {
+      fraction: typeof parsed.fraction === "number" ? parsed.fraction : undefined,
+      phase: typeof parsed.phase === "string" ? parsed.phase : undefined,
+      simulatorFraction:
+        typeof parsed.simulatorFraction === "number" ? parsed.simulatorFraction : undefined
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+/** Split buffered stderr chunks on newlines, parse each line as a heartbeat,
+  * and return the leftover (a trailing line fragment) to feed into the next
+  * chunk. Exported for unit tests. */
+export function scanHeartbeats(
+  chunk: string,
+  remainder: string
+): { events: EngineProgressEvent[]; remainder: string } {
+  const combined = remainder + chunk;
+  const parts = combined.split("\n");
+  const leftover = parts.pop() ?? "";
+  const events: EngineProgressEvent[] = [];
+  for (const line of parts) {
+    const parsed = parseHeartbeatLine(line);
+    if (parsed) events.push(parsed);
+  }
+  return { events, remainder: leftover };
 }
 
 interface IlsScalaCliExecutionResult {
@@ -1097,8 +1137,22 @@ async function invokeIlsScalaCli(
     child.stdout.on("data", (chunk: string) => {
       stdoutChunks.push(chunk);
     });
+
+    // Parse stderr line-by-line so we can extract NDJSON heartbeats from the
+    // engine and translate them to worker progress events. Non-JSON lines
+    // (regular log output) are still buffered and forwarded to the caller
+    // exactly as before.
+    let stderrRemainder = "";
     child.stderr.on("data", (chunk: string) => {
       stderrChunks.push(chunk);
+      if (!params.onProgress) return;
+      const scanned = scanHeartbeats(chunk, stderrRemainder);
+      stderrRemainder = scanned.remainder;
+      for (const event of scanned.events) {
+        void Promise.resolve(params.onProgress(event)).catch(() => {
+          /* swallow: progress is best-effort */
+        });
+      }
     });
 
     let timedOut = false;
@@ -1473,6 +1527,7 @@ async function hydrateRunInputFromUploads(params: {
 async function createRunResultWithIlsHandoff(params: {
   payload: RunJobPayload;
   config: WorkerConfig;
+  onProgress?: (event: EngineProgressEvent) => void | Promise<void>;
 }): Promise<{ result: RunResultRecord; completionMetadata?: Record<string, unknown> }> {
   const input = params.payload.input ?? {};
   if (isPricingRunInput(input)) {
@@ -1513,7 +1568,8 @@ async function createRunResultWithIlsHandoff(params: {
         runId: params.payload.runId,
         workspaceId: params.payload.workspaceId,
         jobId: params.payload.jobId,
-        payload: pricingCliPayload
+        payload: pricingCliPayload,
+        onProgress: params.onProgress
       });
 
       const parsed = parseTrailingJsonFromStdout(pricingExecution.stdout);
@@ -1606,7 +1662,8 @@ async function createRunResultWithIlsHandoff(params: {
       runId: params.payload.runId,
       workspaceId: params.payload.workspaceId,
       jobId: params.payload.jobId,
-      payload: cliPayload
+      payload: cliPayload,
+      onProgress: params.onProgress
     });
 
     const parsed = parseTrailingJsonFromStdout(execution.stdout);
@@ -1716,30 +1773,17 @@ async function main(): Promise<void> {
       };
 
       try {
+        // Real progress: validating fires when we actually start hydrating
+        // the uploaded input (the only real validation the worker does).
+        // The engine later emits stderr NDJSON heartbeats that map onto
+        // `running` / `post-processing` in the onProgress callback below.
         await bullJob.updateProgress(5);
         await emitStage({
           stage: "validating",
           status: "validating",
-          progress: 0.2,
-          message: "Validating inputs"
+          progress: 0.1,
+          message: "Hydrating uploaded inputs"
         });
-        await sleep(config.stepDelayMs);
-
-        await emitStage({
-          stage: "running",
-          status: "running",
-          progress: 0.65,
-          message: "Running analysis"
-        });
-        await sleep(config.stepDelayMs);
-
-        await emitStage({
-          stage: "post-processing",
-          status: "running",
-          progress: 0.9,
-          message: "Post-processing results"
-        });
-        await sleep(config.stepDelayMs);
 
         const { input: hydratedInput, metadata: uploadResolutionMetadata } =
           await hydrateRunInputFromUploads({
@@ -1747,12 +1791,58 @@ async function main(): Promise<void> {
             store
           });
 
+        // Phase mapping for the engine's NDJSON heartbeats. Each engine
+        // phase emits a `fraction` in [0, 1] representing overall CLI
+        // progress; we clamp into [0.15, 0.95] in the worker's progress
+        // window so the UI never jumps backwards and the final completion
+        // event still corresponds to progress=1.0.
+        let lastHeartbeatAt = 0;
+        const throttleMs = 200;
+        const mapPhaseToStage = (
+          phase?: string
+        ): { stage: "validating" | "running" | "post-processing"; status: "validating" | "running" } => {
+          switch (phase) {
+            case "parsing-args":
+            case "loading-input":
+            case "loading-hurdat2":
+              return { stage: "validating", status: "validating" };
+            case "post-processing":
+            case "writing-output":
+            case "done":
+              return { stage: "post-processing", status: "running" };
+            case "simulating":
+            default:
+              return { stage: "running", status: "running" };
+          }
+        };
+
+        const onEngineProgress = async (event: EngineProgressEvent) => {
+          const now = Date.now();
+          if (now - lastHeartbeatAt < throttleMs) return;
+          lastHeartbeatAt = now;
+
+          const raw = typeof event.fraction === "number" ? event.fraction : undefined;
+          if (raw === undefined || !Number.isFinite(raw)) return;
+          const clamped = Math.max(0, Math.min(1, raw));
+          // Keep engine progress in the [0.15, 0.95] window.
+          const mapped = 0.15 + clamped * 0.8;
+          if (mapped <= lastProgress) return;
+          const { stage, status } = mapPhaseToStage(event.phase);
+          await emitStage({
+            stage,
+            status,
+            progress: mapped,
+            message: event.phase ? `engine: ${event.phase}` : "engine running"
+          });
+        };
+
         const { result, completionMetadata } = await createRunResultWithIlsHandoff({
           payload: {
             ...payload,
             input: hydratedInput
           },
-          config
+          config,
+          onProgress: onEngineProgress
         });
 
         const mergedCompletionMetadata =

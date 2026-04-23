@@ -43,15 +43,62 @@ object Hurdat2PropertyCatPricingYltCli {
   }
 
   def run(args: Array[String]): Either[String, Unit] = {
+    emitHeartbeat("phase" -> ujson.Str("parsing-args"), "fraction" -> ujson.Num(0.02))
     for {
       cliArgs <- parseCliArgs(args)
+      _ = emitHeartbeat("phase" -> ujson.Str("loading-input"), "fraction" -> ujson.Num(0.05))
       runInput <- parseRunInput(cliArgs)
+      _ = emitHeartbeat("phase" -> ujson.Str("loading-hurdat2"), "fraction" -> ujson.Num(0.10))
       dataset <- Hurdat2Parser.parseFile(runInput.hurdat2Path).left.map(_.toString)
-      result = Hurdat2PropertyCatPricingYltSimulator.simulate(dataset, runInput.portfolio, runInput.params)
+      _ = emitHeartbeat("phase" -> ujson.Str("simulating"), "fraction" -> ujson.Num(0.15))
+      result = Hurdat2PropertyCatPricingYltSimulator.simulate(
+        dataset,
+        runInput.portfolio,
+        runInput.params,
+        onProgress = makeSimulatorProgressReporter()
+      )
+      _ = emitHeartbeat("phase" -> ujson.Str("post-processing"), "fraction" -> ujson.Num(0.85))
       bundle = buildPosteriorBundle(runInput, result)
       rendered = ujson.write(bundle, indent = 2)
+      _ = emitHeartbeat("phase" -> ujson.Str("writing-output"), "fraction" -> ujson.Num(0.95))
       _ <- writeOutput(rendered, cliArgs.outputPath)
+      _ = emitHeartbeat("phase" -> ujson.Str("done"), "fraction" -> ujson.Num(1.0))
     } yield ()
+  }
+
+  /** Emit one NDJSON heartbeat line on stderr. The worker parses stderr
+    * line-by-line and translates `{"kind":"progress",...}` into BullMQ
+    * progress events, so the UI sees the engine's real state rather than
+    * a sleep-driven mockup. Any parsing failure on the worker side is
+    * silently ignored; stderr is also used for regular log output.
+    */
+  private def emitHeartbeat(fields: (String, ujson.Value)*): Unit = {
+    val obj = ujson.Obj("kind" -> ujson.Str("progress"))
+    fields.foreach { case (k, v) => obj(k) = v }
+    System.err.println(ujson.write(obj))
+  }
+
+  /** The simulator loops over historical years; for each year processed it
+    * calls the callback with a [0, 1] fraction of its own work. We remap
+    * that into the CLI's overall progress window [0.15, 0.85] and throttle
+    * emissions to at most one per 0.05 step so stderr does not flood.
+    */
+  private def makeSimulatorProgressReporter(): Double => Unit = {
+    val start = 0.15
+    val end = 0.85
+    @volatile var lastEmitted = start
+    val step = 0.05
+    (fraction: Double) => {
+      val overall = start + (end - start) * math.max(0d, math.min(1d, fraction))
+      if (overall - lastEmitted >= step || fraction >= 1.0) {
+        lastEmitted = overall
+        emitHeartbeat(
+          "phase" -> ujson.Str("simulating"),
+          "fraction" -> ujson.Num(math.max(0d, math.min(1d, overall))),
+          "simulatorFraction" -> ujson.Num(math.max(0d, math.min(1d, fraction)))
+        )
+      }
+    }
   }
 
   private def parseCliArgs(args: Array[String]): Either[String, CliArgs] = {
