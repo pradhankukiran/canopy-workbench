@@ -272,6 +272,25 @@ class PostgresPersistence {
         data jsonb not null
       )
     `);
+
+    await this.pool.query(`
+      create table if not exists canopy_phase1_api_keys (
+        key_id text primary key,
+        workspace_id text not null,
+        user_id text not null,
+        name text,
+        key_prefix text not null,
+        key_hash text not null,
+        key_salt text not null,
+        created_at timestamptz not null,
+        last_used_at timestamptz,
+        expires_at timestamptz,
+        revoked_at timestamptz
+      )
+    `);
+    await this.pool.query(
+      "create index if not exists canopy_phase1_api_keys_prefix_idx on canopy_phase1_api_keys (key_prefix) where revoked_at is null"
+    );
   }
 
   async upsertJob(job: JobRecord): Promise<void> {
@@ -459,6 +478,82 @@ class PostgresPersistence {
       count: Number.parseInt(countResult.rows[0]?.count ?? "0", 10) || 0
     };
   }
+
+  async findApiKeysByPrefix(prefix: string): Promise<ApiKeyRow[]> {
+    const result = await this.pool.query<ApiKeyRow>(
+      `
+        select
+          key_id as "keyId",
+          workspace_id as "workspaceId",
+          user_id as "userId",
+          name,
+          key_prefix as "keyPrefix",
+          key_hash as "keyHash",
+          key_salt as "keySalt",
+          created_at::text as "createdAt",
+          last_used_at::text as "lastUsedAt",
+          expires_at::text as "expiresAt",
+          revoked_at::text as "revokedAt"
+        from canopy_phase1_api_keys
+        where key_prefix = $1 and revoked_at is null
+      `,
+      [prefix]
+    );
+    return result.rows;
+  }
+
+  async upsertApiKey(key: ApiKeyRow): Promise<void> {
+    await this.pool.query(
+      `
+        insert into canopy_phase1_api_keys (
+          key_id, workspace_id, user_id, name,
+          key_prefix, key_hash, key_salt,
+          created_at, last_used_at, expires_at, revoked_at
+        ) values ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz, $9::timestamptz, $10::timestamptz, $11::timestamptz)
+        on conflict (key_id) do update set
+          name = excluded.name,
+          last_used_at = excluded.last_used_at,
+          expires_at = excluded.expires_at,
+          revoked_at = excluded.revoked_at
+      `,
+      [
+        key.keyId,
+        key.workspaceId,
+        key.userId,
+        key.name ?? null,
+        key.keyPrefix,
+        key.keyHash,
+        key.keySalt,
+        key.createdAt,
+        key.lastUsedAt ?? null,
+        key.expiresAt ?? null,
+        key.revokedAt ?? null
+      ]
+    );
+  }
+
+  async touchApiKeyLastUsed(keyId: string, isoTimestamp: string): Promise<void> {
+    await this.pool.query(
+      "update canopy_phase1_api_keys set last_used_at = $2::timestamptz where key_id = $1",
+      [keyId, isoTimestamp]
+    );
+  }
+}
+
+/** Wire-compatible with apps/api/src/auth.ts#ApiKeyRecord but lives here so
+  * state.ts has no import cycle with auth.ts. */
+export interface ApiKeyRow {
+  keyId: string;
+  workspaceId: string;
+  userId: string;
+  name?: string | null;
+  keyPrefix: string;
+  keyHash: string;
+  keySalt: string;
+  createdAt: string;
+  lastUsedAt?: string | null;
+  expiresAt?: string | null;
+  revokedAt?: string | null;
 }
 
 export class RedisStateStore {
@@ -656,6 +751,26 @@ export class RedisStateStore {
 
   runResultKey(runId: string): string {
     return this.key.runResult(runId);
+  }
+
+  /** API-key read path: postgres only. Returns empty list when postgres is
+    * not configured, so callers can treat that as "no keys found" and fall
+    * through to the anonymous path. */
+  async findApiKeysByPrefix(prefix: string): Promise<ApiKeyRow[]> {
+    if (!this.postgres) return [];
+    return this.postgres.findApiKeysByPrefix(prefix);
+  }
+
+  async upsertApiKey(key: ApiKeyRow): Promise<void> {
+    if (!this.postgres) {
+      throw new Error("API keys require DATABASE_URL to be configured");
+    }
+    await this.postgres.upsertApiKey(key);
+  }
+
+  async touchApiKeyLastUsed(keyId: string, isoTimestamp: string): Promise<void> {
+    if (!this.postgres) return;
+    await this.postgres.touchApiKeyLastUsed(keyId, isoTimestamp).catch(() => undefined);
   }
 
   private async listByIndex<T>(

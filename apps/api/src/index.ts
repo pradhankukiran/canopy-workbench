@@ -17,6 +17,15 @@ import {
   RedisStateStore
 } from "./state";
 import {
+  extractBearerToken,
+  generateApiKey,
+  hashApiKey,
+  looksLikeApiKey,
+  prefixOf,
+  verifyApiKey,
+  type Principal
+} from "./auth";
+import {
   extractEmbeddedPropertyPortfolio,
   validatePropertyPortfolio,
   type ValidationFailure
@@ -52,6 +61,12 @@ interface ApiConfig {
   runQueueName: string;
   databaseUrl?: string;
   uploadDir: string;
+  allowAnonymous: boolean;
+  demoWorkspaceId: string;
+  demoUserId: string;
+  bootstrapApiKey?: string;
+  bootstrapWorkspaceId?: string;
+  bootstrapUserId?: string;
 }
 
 type AnalysisType = "pricing" | "risk" | "sensitivity";
@@ -68,6 +83,13 @@ function readIntEnv(name: string, fallback: number): number {
 }
 
 function readConfig(): ApiConfig {
+  const allowAnonymousEnv = process.env.CANOPY_ALLOW_ANONYMOUS;
+  // Default: allow anonymous in development (demo) mode. Set to "false"/"0"
+  // in production to force every request through API-key auth.
+  const allowAnonymous = allowAnonymousEnv
+    ? !["0", "false", "no"].includes(allowAnonymousEnv.toLowerCase())
+    : true;
+
   return {
     port: readIntEnv("API_PORT", readIntEnv("PORT", 3001)),
     host: process.env.API_HOST ?? "0.0.0.0",
@@ -75,7 +97,13 @@ function readConfig(): ApiConfig {
     redisPrefix: process.env.CANOPY_REDIS_PREFIX ?? DEFAULT_REDIS_PREFIX,
     runQueueName: process.env.CANOPY_RUN_QUEUE ?? DEFAULT_RUN_QUEUE_NAME,
     databaseUrl: process.env.DATABASE_URL,
-    uploadDir: process.env.CANOPY_UPLOAD_DIR ?? path.resolve(process.cwd(), "target/uploads")
+    uploadDir: process.env.CANOPY_UPLOAD_DIR ?? path.resolve(process.cwd(), "target/uploads"),
+    allowAnonymous,
+    demoWorkspaceId: process.env.CANOPY_DEMO_WORKSPACE_ID ?? "ws_demo001",
+    demoUserId: process.env.CANOPY_DEMO_USER_ID ?? "usr_demo001",
+    bootstrapApiKey: process.env.CANOPY_BOOTSTRAP_API_KEY,
+    bootstrapWorkspaceId: process.env.CANOPY_BOOTSTRAP_WORKSPACE_ID,
+    bootstrapUserId: process.env.CANOPY_BOOTSTRAP_USER_ID
   };
 }
 
@@ -230,6 +258,81 @@ async function main(): Promise<void> {
 
   await app.register(cors, { origin: true });
 
+  // Optional one-time seed of a bootstrap API key so a fresh deployment can
+  // make authenticated calls without running a separate migration step.
+  // Set CANOPY_BOOTSTRAP_API_KEY to a ck_-prefixed string in the environment;
+  // it is upserted (idempotent) against the supplied workspace/user ids.
+  if (config.bootstrapApiKey && looksLikeApiKey(config.bootstrapApiKey)) {
+    try {
+      const workspaceId = config.bootstrapWorkspaceId ?? config.demoWorkspaceId;
+      const userId = config.bootstrapUserId ?? config.demoUserId;
+      const { hash, salt } = hashApiKey(config.bootstrapApiKey);
+      await store.upsertApiKey({
+        keyId: `key_bootstrap_${prefixOf(config.bootstrapApiKey).replace(/[^a-zA-Z0-9_]/g, "")}`,
+        workspaceId,
+        userId,
+        name: "bootstrap",
+        keyPrefix: prefixOf(config.bootstrapApiKey),
+        keyHash: hash,
+        keySalt: salt,
+        createdAt: new Date().toISOString()
+      });
+      app.log.info({ workspaceId, userId, keyPrefix: prefixOf(config.bootstrapApiKey) }, "bootstrap api key upserted");
+    } catch (error) {
+      app.log.warn({ err: error instanceof Error ? error.message : String(error) }, "bootstrap api key upsert failed");
+    }
+  }
+
+  // Populate request.principal on every request. Paths in AUTH_EXEMPT are
+  // skipped. When a token is present it must validate; when absent, we fall
+  // back to an anonymous demo principal if allowAnonymous=true, or 401
+  // otherwise. The principal is the authoritative source of workspaceId /
+  // userId in downstream handlers.
+  const AUTH_EXEMPT = new Set<string>(["/health"]);
+  app.decorateRequest("principal", null);
+  app.addHook("preHandler", async (request, reply) => {
+    if (AUTH_EXEMPT.has(request.routeOptions.url ?? request.url)) return;
+
+    const token = extractBearerToken(request.headers as Record<string, string | string[] | undefined>);
+
+    if (token && looksLikeApiKey(token)) {
+      const prefix = prefixOf(token);
+      const candidates = await store.findApiKeysByPrefix(prefix);
+      for (const candidate of candidates) {
+        if (candidate.revokedAt) continue;
+        if (candidate.expiresAt && new Date(candidate.expiresAt) < new Date()) continue;
+        if (verifyApiKey(token, candidate.keyHash, candidate.keySalt)) {
+          (request as { principal?: Principal }).principal = {
+            userId: candidate.userId,
+            workspaceId: candidate.workspaceId,
+            keyId: candidate.keyId,
+            keyName: candidate.name ?? undefined,
+            source: "api_key"
+          };
+          void store.touchApiKeyLastUsed(candidate.keyId, new Date().toISOString());
+          return;
+        }
+      }
+      return reply.code(401).send(apiError("Invalid or revoked API key", "invalid_api_key"));
+    }
+
+    if (token) {
+      // Provided a token but it didn't look like one of our keys.
+      return reply.code(401).send(apiError("Malformed API key", "invalid_api_key"));
+    }
+
+    if (!config.allowAnonymous) {
+      return reply.code(401).send(apiError("Authentication required", "auth_required"));
+    }
+
+    (request as { principal?: Principal }).principal = {
+      userId: config.demoUserId,
+      workspaceId: config.demoWorkspaceId,
+      keyId: "anonymous",
+      source: "anonymous"
+    };
+  });
+
   app.get("/health", async () => {
     const redisPing = await redis.ping();
     return {
@@ -241,24 +344,32 @@ async function main(): Promise<void> {
     };
   });
 
-  app.get("/api/v1/me", async () => ({
-    userId: "usr_demo001",
-    email: "demo@canopy.local",
-    displayName: "Canopy Demo User",
-    defaultWorkspaceId: "ws_demo001"
-  }));
+  app.get("/api/v1/me", async (request) => {
+    const principal = (request as { principal?: Principal }).principal;
+    return {
+      userId: principal?.userId ?? config.demoUserId,
+      email: principal?.source === "api_key" ? undefined : "demo@canopy.local",
+      displayName: principal?.source === "api_key" ? principal.keyName ?? "API key" : "Canopy Demo User",
+      defaultWorkspaceId: principal?.workspaceId ?? config.demoWorkspaceId,
+      authSource: principal?.source ?? "anonymous"
+    };
+  });
 
-  app.get("/api/v1/workspaces", async () => ({
-    items: [
-      {
-        workspaceId: "ws_demo001",
-        name: "Demo Workspace",
-        createdAt: "2026-01-01T00:00:00.000Z",
-        createdByUserId: "usr_demo001"
-      }
-    ],
-    page: { count: 1 }
-  }));
+  app.get("/api/v1/workspaces", async (request) => {
+    const principal = (request as { principal?: Principal }).principal;
+    const workspaceId = principal?.workspaceId ?? config.demoWorkspaceId;
+    return {
+      items: [
+        {
+          workspaceId,
+          name: workspaceId === config.demoWorkspaceId ? "Demo Workspace" : workspaceId,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          createdByUserId: principal?.userId ?? config.demoUserId
+        }
+      ],
+      page: { count: 1 }
+    };
+  });
 
   app.get("/api/v1/uploads", async () => {
     const items = await store.listUploads();
@@ -267,7 +378,9 @@ async function main(): Promise<void> {
 
   app.post<{ Body: CreateUploadBody }>("/api/v1/uploads", async (request, reply) => {
     const now = new Date().toISOString();
-    const workspaceId = asNonEmptyString(request.body?.workspaceId) ?? "ws_demo001";
+    const principal = (request as { principal?: Principal }).principal;
+    const workspaceId =
+      principal?.workspaceId ?? asNonEmptyString(request.body?.workspaceId) ?? config.demoWorkspaceId;
     const filename = asNonEmptyString(request.body?.filename) ?? `upload-${randomUUID()}.json`;
     const contentType =
       asNonEmptyString(request.body?.contentType) ?? "application/octet-stream";
@@ -329,12 +442,15 @@ async function main(): Promise<void> {
   });
 
   const submitRun = async (
-    request: { body?: CreateRunBody },
+    request: { body?: CreateRunBody; principal?: Principal },
     reply: FastifyReply,
     options?: { forceAnalysisType?: AnalysisType }
   ) => {
     const now = new Date().toISOString();
-    const workspaceId = asNonEmptyString(request.body?.workspaceId) ?? "ws_demo001";
+    // The principal is always set by the preHandler (either from a valid
+    // API key or the anonymous fallback). Handlers trust principal.workspaceId
+    // unconditionally; body.workspaceId is ignored to prevent tenant spoofing.
+    const workspaceId = request.principal?.workspaceId ?? config.demoWorkspaceId;
     const uploadId = asNonEmptyString(request.body?.uploadId);
     const input = withForcedAnalysisType(request.body, options?.forceAnalysisType);
     const analysisType = resolveAnalysisType(input);
