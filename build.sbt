@@ -4,7 +4,12 @@ ThisBuild / scalaVersion := "2.13.14"
 
 lazy val commonSettings = Seq(
   scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked"),
-  Test / parallelExecution := false
+  Test / parallelExecution := false,
+  libraryDependencies ++= Seq(
+    "org.scalatest" %% "scalatest" % "3.2.19" % Test,
+    "org.scalatestplus" %% "scalacheck-1-18" % "3.2.19.0" % Test,
+    "org.scalacheck" %% "scalacheck" % "1.18.1" % Test
+  )
 )
 
 def canopyModule(moduleId: String): Project =
