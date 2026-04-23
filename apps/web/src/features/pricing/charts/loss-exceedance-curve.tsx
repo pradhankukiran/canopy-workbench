@@ -1,31 +1,41 @@
 import { ChartContainer } from "@/components/shared/chart-container";
 import { chartColors, chartMargin, chartAxisStyles } from "@/lib/chart-theme";
 import { formatCurrency } from "@/lib/format";
-import type { ReturnPeriodPoint } from "@/types/api";
+import type { BandPoint, ReturnPeriodPoint } from "@/types/api";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { Group } from "@visx/group";
 import { scaleLog, scaleLinear } from "@visx/scale";
-import { LinePath } from "@visx/shape";
+import { AreaClosed, LinePath } from "@visx/shape";
 
 interface LossExceedanceCurveProps {
   oep?: ReturnPeriodPoint[];
   aep?: ReturnPeriodPoint[];
+  oepBand?: BandPoint[];
+  aepBand?: BandPoint[];
   currency: string;
 }
 
 function LossExceedanceCurve({
   oep = [],
   aep = [],
+  oepBand = [],
+  aepBand = [],
   currency,
 }: LossExceedanceCurveProps) {
   const allPoints = [...oep, ...aep];
   if (allPoints.length === 0) return null;
 
-  const allRp = allPoints.map((p) => p.returnPeriodYears).filter((v) => v > 0);
-  const allLoss = allPoints
-    .flatMap((p) => [p.grossLoss, p.netLoss, p.bondPayout])
-    .filter((v): v is number => typeof v === "number" && v >= 0);
+  const allRp = [
+    ...allPoints.map((p) => p.returnPeriodYears),
+    ...oepBand.map((b) => b.returnPeriodYears ?? 0),
+    ...aepBand.map((b) => b.returnPeriodYears ?? 0),
+  ].filter((v) => v > 0);
+  const allLoss = [
+    ...allPoints.flatMap((p) => [p.grossLoss, p.netLoss, p.bondPayout]),
+    ...oepBand.flatMap((b) => [b.mean, b.p05, b.p95]),
+    ...aepBand.flatMap((b) => [b.mean, b.p05, b.p95]),
+  ].filter((v): v is number => typeof v === "number" && v >= 0);
 
   if (allRp.length === 0 || allLoss.length === 0) return null;
 
@@ -55,6 +65,15 @@ function LossExceedanceCurve({
           nice: true,
         });
 
+        const sortedOepBand = oepBand
+          .filter((b) => typeof b.returnPeriodYears === "number" && typeof b.p05 === "number" && typeof b.p95 === "number")
+          .slice()
+          .sort((a, b) => (a.returnPeriodYears ?? 0) - (b.returnPeriodYears ?? 0));
+        const sortedAepBand = aepBand
+          .filter((b) => typeof b.returnPeriodYears === "number" && typeof b.p05 === "number" && typeof b.p95 === "number")
+          .slice()
+          .sort((a, b) => (a.returnPeriodYears ?? 0) - (b.returnPeriodYears ?? 0));
+
         return (
           <svg width={width} height={height}>
             <Group left={m.left} top={m.top}>
@@ -64,6 +83,35 @@ function LossExceedanceCurve({
                 stroke={chartColors.grid}
                 strokeDasharray="3,3"
               />
+
+              {/* Phase 4 shaded credible-band envelopes (p05-p95). Drawn
+                  BEHIND the deterministic curves so the point estimates
+                  stay visually dominant. */}
+              {sortedOepBand.length > 0 && (
+                <AreaClosed
+                  data={sortedOepBand}
+                  yScale={yScale}
+                  x={(d) => xScale(d.returnPeriodYears ?? 0)}
+                  y={(d) => yScale(d.p95 ?? 0)}
+                  y0={(d) => yScale(d.p05 ?? 0)}
+                  fill={chartColors.oep}
+                  fillOpacity={0.12}
+                  stroke="none"
+                />
+              )}
+              {sortedAepBand.length > 0 && (
+                <AreaClosed
+                  data={sortedAepBand}
+                  yScale={yScale}
+                  x={(d) => xScale(d.returnPeriodYears ?? 0)}
+                  y={(d) => yScale(d.p95 ?? 0)}
+                  y0={(d) => yScale(d.p05 ?? 0)}
+                  fill={chartColors.aep}
+                  fillOpacity={0.12}
+                  stroke="none"
+                />
+              )}
+
               {oep.length > 0 && (
                 <LinePath
                   data={oep}

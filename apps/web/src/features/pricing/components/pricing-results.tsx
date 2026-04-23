@@ -83,6 +83,8 @@ export function PricingResults({ pricingYlt, bundle }: PricingResultsProps) {
             <LossExceedanceCurve
               oep={bundle.riskMetrics.oep}
               aep={bundle.riskMetrics.aep}
+              oepBand={pricingOutput?.oepBands?.net}
+              aepBand={pricingOutput?.aepBands?.net}
               currency={currency}
             />
           )}
