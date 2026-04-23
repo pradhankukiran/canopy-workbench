@@ -8,6 +8,7 @@ import java.nio.file.{Path, Paths}
 import java.time.{LocalDate, LocalTime}
 
 import Hurdat2PropertyCatPricingYltSimulator._
+import canopy.engine.property.financial.{Layer, LayerTower, PremiumTerms}
 
 /** Baseline golden files for the phase-1 pricing engine.
   *
@@ -143,6 +144,20 @@ class BaselineGoldenSpec extends AnyFunSuite {
     }
   )
 
+  private def gulfWithTowerParams: Params = {
+    val tower = LayerTower(
+      Layer("L1 2M xs 1M", attachment = 1_000_000d, limit = 2_000_000d, reinstatements = 1),
+      Layer("L2 5M xs 3M", attachment = 3_000_000d, limit = 5_000_000d, reinstatements = 1),
+      Layer("L3 10M xs 8M", attachment = 8_000_000d, limit = 10_000_000d)
+    )
+    commonParams.copy(
+      pricingParameters = PricingParameters.default.copy(
+        layerTower = tower,
+        premiumTerms = PremiumTerms(riskLoadCoefficient = 0.3d, brokerageRate = 0.05d)
+      )
+    )
+  }
+
   private def resultToGoldenJson(r: Hurdat2PropertyCatPricingYltSimulator.Result): ujson.Value = {
     def rpPoint(p: ReturnPeriodPoint): ujson.Obj = ujson.Obj(
       "returnPeriodYears" -> ujson.Num(p.returnPeriodYears),
@@ -189,8 +204,8 @@ class BaselineGoldenSpec extends AnyFunSuite {
     )
   }
 
-  private def checkGolden(name: String, portfolio: PropertyPortfolio): Unit = {
-    val result = Hurdat2PropertyCatPricingYltSimulator.simulate(canonicalDataset, portfolio, commonParams)
+  private def checkGolden(name: String, portfolio: PropertyPortfolio, params: Params = commonParams): Unit = {
+    val result = Hurdat2PropertyCatPricingYltSimulator.simulate(canonicalDataset, portfolio, params)
     val actualJson = resultToGoldenJson(result)
     val goldenPath = goldenDir.resolve(s"$name.json")
     val expected = GoldenCompare.readOrUpdate(goldenPath, actualJson)
@@ -204,6 +219,23 @@ class BaselineGoldenSpec extends AnyFunSuite {
     )
   }
 
+  private def resultToGoldenJsonWithLayers(r: Result): ujson.Value = {
+    val base = resultToGoldenJson(r).asInstanceOf[ujson.Obj]
+    base("layerPremiums") = ujson.Arr.from(r.layerPremiums.map { p =>
+      ujson.Obj(
+        "layerName" -> ujson.Str(p.layerName),
+        "pureLoss" -> ujson.Num(p.pureLoss),
+        "stdDevLoss" -> ujson.Num(p.stdDevLoss),
+        "grossTechnicalPremium" -> ujson.Num(p.grossTechnicalPremium),
+        "rateOnLine" -> ujson.Num(p.rateOnLine)
+      )
+    })
+    base("tvarByReturnPeriod") = ujson.Arr.from(r.tvarByReturnPeriod.map { case (rp, v) =>
+      ujson.Obj("returnPeriodYears" -> ujson.Num(rp), "tvar" -> ujson.Num(v))
+    })
+    base
+  }
+
   test("golden: single-location Miami portfolio") {
     checkGolden("single-miami", singleMiamiPortfolio)
   }
@@ -214,5 +246,15 @@ class BaselineGoldenSpec extends AnyFunSuite {
 
   test("golden: 10-location portfolio") {
     checkGolden("ten-location", tenLocationPortfolio)
+  }
+
+  test("golden: gulf-three with layer tower + premium") {
+    val params = gulfWithTowerParams
+    val result = Hurdat2PropertyCatPricingYltSimulator.simulate(canonicalDataset, gulfThreePortfolio, params)
+    val actualJson = resultToGoldenJsonWithLayers(result)
+    val goldenPath = goldenDir.resolve("gulf-three-tower.json")
+    val expected = GoldenCompare.readOrUpdate(goldenPath, actualJson)
+    val diffs = GoldenCompare.diff(actualJson, expected, GoldenCompare.Tolerance.default)
+    assert(diffs.isEmpty, diffs.mkString("\n"))
   }
 }

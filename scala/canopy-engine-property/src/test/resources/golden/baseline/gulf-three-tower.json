@@ -1,0 +1,142 @@
+{
+  "firstFiveSimulatedYears": [
+    {
+      "cededLoss": 555700.126791033,
+      "eventCount": 2,
+      "grossLoss": 2929863.342145727,
+      "netLoss": 2374163.215354694,
+      "sourceYear": 1971,
+      "yearIndex": 1
+    },
+    {
+      "cededLoss": 202398.73489963773,
+      "eventCount": 1,
+      "grossLoss": 2572241.605093782,
+      "netLoss": 2369842.870194144,
+      "sourceYear": 1974,
+      "yearIndex": 2
+    },
+    {
+      "cededLoss": 462730.67895902344,
+      "eventCount": 2,
+      "grossLoss": 4201657.091838882,
+      "netLoss": 3738926.4128798586,
+      "sourceYear": 1974,
+      "yearIndex": 3
+    },
+    {
+      "cededLoss": 0,
+      "eventCount": 0,
+      "grossLoss": 0,
+      "netLoss": 0,
+      "sourceYear": 0,
+      "yearIndex": 4
+    },
+    {
+      "cededLoss": 0,
+      "eventCount": 0,
+      "grossLoss": 0,
+      "netLoss": 0,
+      "sourceYear": 0,
+      "yearIndex": 5
+    }
+  ],
+  "historicalYearsCount": 11,
+  "layerPremiums": [
+    {
+      "grossTechnicalPremium": 1333904.5325954498,
+      "layerName": "L1 2M xs 1M",
+      "pureLoss": 934150.1803319617,
+      "rateOnLine": 0.6669522662977249,
+      "stdDevLoss": 1110197.0854457188
+    },
+    {
+      "grossTechnicalPremium": 797838.0054099204,
+      "layerName": "L2 5M xs 3M",
+      "pureLoss": 444636.90938893735,
+      "rateOnLine": 0.15956760108198406,
+      "stdDevLoss": 1044363.9858349568
+    },
+    {
+      "grossTechnicalPremium": 28548.444720758704,
+      "layerName": "L3 10M xs 8M",
+      "pureLoss": 5183.661065785968,
+      "rateOnLine": 0.00285484447207587,
+      "stdDevLoss": 73124.53806311601
+    }
+  ],
+  "locationCount": 3,
+  "portfolioId": "pf_golden_gulf3",
+  "riskMetrics": {
+    "aep": [
+      {
+        "bondPayout": 793858.2504434322,
+        "grossLoss": 7062381.689582631,
+        "netLoss": 6364378.211089087,
+        "returnPeriodYears": 10
+      },
+      {
+        "bondPayout": 1027222.2269827079,
+        "grossLoss": 1.113108896774392E7,
+        "netLoss": 1.044127314613101E7,
+        "returnPeriodYears": 50
+      },
+      {
+        "bondPayout": 1125509.4917578227,
+        "grossLoss": 1.2081105924199698E7,
+        "netLoss": 1.095931327855037E7,
+        "returnPeriodYears": 100
+      }
+    ],
+    "attachmentProbability": 0.685,
+    "currency": "USD",
+    "exhaustionProbability": 0.05,
+    "expectedLoss": 2345085.375425387,
+    "expectedLossRate": 0.07328391798204335,
+    "oep": [
+      {
+        "bondPayout": 421701.27954957524,
+        "grossLoss": 5196440.519816343,
+        "netLoss": 4886114.736667714,
+        "returnPeriodYears": 10
+      },
+      {
+        "bondPayout": 546993.4055788767,
+        "grossLoss": 7299552.480113559,
+        "netLoss": 6865694.020370432,
+        "returnPeriodYears": 50
+      },
+      {
+        "bondPayout": 575710.0157284613,
+        "grossLoss": 7923053.115475994,
+        "netLoss": 7429909.430535173,
+        "returnPeriodYears": 100
+      }
+    ],
+    "stdDevLoss": 2674454.027439459,
+    "tvar99": 1.1943820824608847E7,
+    "var99": 1.095931327855037E7
+  },
+  "simulatedYears": 200,
+  "summaryStats": {
+    "maxLoss": 1.2049678944055224E7,
+    "p50Loss": 1577115.435767967,
+    "p90Loss": 6364378.211089087,
+    "p99Loss": 1.095931327855037E7
+  },
+  "totalTiv": 32000000,
+  "tvarByReturnPeriod": [
+    {
+      "returnPeriodYears": 10,
+      "tvar": 8311825.344610184
+    },
+    {
+      "returnPeriodYears": 50,
+      "tvar": 1.1410756780612284E7
+    },
+    {
+      "returnPeriodYears": 100,
+      "tvar": 1.1943820824608847E7
+    }
+  ]
+}
