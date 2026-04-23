@@ -217,3 +217,26 @@ export async function getRunEvents(
   );
   return normalizeRunEventsResponse(body);
 }
+
+export interface DataArtifactStatus {
+  id: string;
+  kind: string;
+  state: "ready" | "missing" | "unavailable";
+  description: string;
+  url: string;
+  license: string;
+  approximateMb: number;
+  path?: string;
+  sizeBytes?: number;
+  sha256?: string;
+  reason?: string;
+}
+
+export interface DataSourcesSummary {
+  cacheDir: string;
+  artifacts: DataArtifactStatus[];
+}
+
+export function getDataSources(): Promise<DataSourcesSummary> {
+  return request<DataSourcesSummary>("/data-sources");
+}

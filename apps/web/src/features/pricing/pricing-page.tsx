@@ -6,6 +6,7 @@ import { ConfigurePanel } from "@/features/shared-workflow/configure-panel";
 import { ReviewPanel } from "@/features/shared-workflow/review-panel";
 import { RunStatusPanel } from "@/features/shared-workflow/run-status-panel";
 import { DiagnosticsPanel } from "@/features/shared-workflow/diagnostics-panel";
+import { DataSourcesPanel } from "@/features/shared-workflow/data-sources-panel";
 import { ResultsLayout } from "@/features/shared-workflow/results-layout";
 import { UploadPanel } from "@/features/shared-workflow/upload-panel";
 import { PricingForm } from "./components/pricing-form";
@@ -123,6 +124,8 @@ export function PricingPage() {
           eventsMessage={w.eventsMessage}
           pollingActive={w.pollingActive}
         />
+
+        <DataSourcesPanel />
 
         <div ref={w.resultsRef}>
           <ResultsLayout
