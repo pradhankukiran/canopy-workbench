@@ -175,7 +175,14 @@ object Hurdat2PropertyCatPricingYltSimulator {
       codeEra: Option[String] = None,
       roofShape: Option[String] = None,
       roofCover: Option[String] = None,
-      surfaceRoughnessClass: Option[String] = None
+      surfaceRoughnessClass: Option[String] = None,
+      // Phase 3.6: per-peril deductible and sublimit overrides. Keys are
+      // upper-cased peril codes (WIND, STORM_SURGE, HAIL, FLOOD, ...);
+      // values in (0, 1] are treated as fraction of TIV and values > 1
+      // as absolute currency amounts. When a peril key is absent, the
+      // site-level `deductible`/`limit` are used as the fallback.
+      perilDeductibles: Map[String, Double] = Map.empty,
+      sublimits: Map[String, Double] = Map.empty
   )
 
   final case class PropertyPortfolio(
@@ -503,11 +510,15 @@ object Hurdat2PropertyCatPricingYltSimulator {
       val siteWind = Windfield.maxSiteWindKt(storm.track, loc, pp)
       val windLoss = Vulnerability.modeledGroundUpLoss(loc, siteWind, pp, rng)
       val surgeLoss = StormSurge.modeledSurgeLoss(storm, loc, pp)
-      // Combine wind and surge ground-up losses, bounded by TIV so a
-      // location cannot "lose more than it's worth" when both perils
-      // reach saturation simultaneously.
-      val groundUp = math.min(loc.tiv, windLoss + surgeLoss)
-      val insured = SiteTerms.modeledInsuredLoss(loc, groundUp)
+      // Phase 3.6: apply per-peril sublimits + deductibles separately
+      // per peril, then sum and bound by the site-level limit. Cap
+      // perilGroundLoss at TIV so a location cannot "lose more than
+      // it's worth" when both perils reach saturation simultaneously.
+      val perilGround = Map(
+        "WIND" -> math.min(loc.tiv, windLoss),
+        "STORM_SURGE" -> math.min(loc.tiv, surgeLoss)
+      ).filter { case (_, v) => v > 0d }
+      val (groundUp, insured) = SiteTerms.applyPerilTerms(perilGround, loc)
       val ceded = math.max(0d, groundUp - insured)
       (siteWind, groundUp, ceded, insured)
     }

@@ -327,10 +327,27 @@ object Hurdat2PropertyCatPricingYltCli {
         codeEra = optionalString(obj, "codeEra"),
         roofShape = optionalString(obj, "roofShape"),
         roofCover = optionalString(obj, "roofCover"),
-        surfaceRoughnessClass = optionalString(obj, "surfaceRoughnessClass")
+        surfaceRoughnessClass = optionalString(obj, "surfaceRoughnessClass"),
+        perilDeductibles = optionalDoubleMap(obj, "perilDeductibles").getOrElse(Map.empty),
+        sublimits = optionalDoubleMap(obj, "sublimits").getOrElse(Map.empty)
       )
     )
   }
+
+  /** Parse an object whose values are numbers into Map[String, Double]. Keys
+    * are upper-cased so peril-code lookups in SiteTerms are case-insensitive. */
+  private def optionalDoubleMap(obj: ujson.Obj, field: String): Option[Map[String, Double]] =
+    obj.value.get(field).flatMap {
+      case o: ujson.Obj =>
+        val entries = o.value.toMap.flatMap { case (k, v) =>
+          v match {
+            case n: ujson.Num => Some(k.trim.toUpperCase -> n.value)
+            case _            => None
+          }
+        }
+        if (entries.nonEmpty) Some(entries) else None
+      case _ => None
+    }
 
   private def locatePricingParams(rootObj: ujson.Obj, nestedInput: Option[ujson.Obj]): Either[String, ujson.Obj] = {
     val rootModuleParams = rootObj.value.get("moduleParameters").flatMap(asObjOpt)
