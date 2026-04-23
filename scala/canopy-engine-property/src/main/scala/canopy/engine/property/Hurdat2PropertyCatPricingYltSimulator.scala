@@ -100,6 +100,11 @@ object Hurdat2PropertyCatPricingYltSimulator {
       // reverts to using each historical event's loss exactly.
       useEventPerturbation: Boolean = true,
       eventPerturbationSigma: Double = 0.30d,
+      // Phase 3.7: reinsurance layer tower applied to per-event net
+      // losses. Empty tower = no cession; the YLT output reports
+      // aggregate-net == aggregate-gross in that case.
+      layerTower: canopy.engine.property.financial.LayerTower =
+        canopy.engine.property.financial.LayerTower.empty,
       // Legacy single power-curve params (used when useHazusCurves=false).
       minDamagingWindKt: Double = 35d,
       saturationWindKt: Double = 130d,
@@ -227,7 +232,11 @@ object Hurdat2PropertyCatPricingYltSimulator {
       // compatibility with any external Params constructor.
       maxEventGrossLoss: Double = 0d,
       maxEventNetLoss: Double = 0d,
-      maxEventCededLoss: Double = 0d
+      maxEventCededLoss: Double = 0d,
+      // Phase 3.7: per-event net losses in the order they occurred in the
+      // year. Consumed by LayerTower.apply(...) to compute occurrence-
+      // basis cessions. Empty for years with no events.
+      eventNetLosses: Vector[Double] = Vector.empty
   )
 
   final case class ReturnPeriodPoint(
@@ -271,7 +280,12 @@ object Hurdat2PropertyCatPricingYltSimulator {
       historicalYears: Vector[HistoricalYearLoss],
       simulatedYears: Vector[SimulatedYearLoss],
       riskMetrics: RiskMetrics,
-      summaryStats: SummaryStats
+      summaryStats: SummaryStats,
+      // Phase 3.7: per-year layer outcomes when a tower is configured.
+      // Outer index = simulated year (matches simulatedYears order);
+      // inner index = layer (matches params.pricingParameters.layerTower).
+      // Empty when no layer tower is configured.
+      layerOutcomes: Vector[Vector[canopy.engine.property.financial.LayerYearOutcome]] = Vector.empty
   )
 
   def simulate(
@@ -287,6 +301,11 @@ object Hurdat2PropertyCatPricingYltSimulator {
     val riskMetrics = computeRiskMetrics(simulatedYears, normalizedPortfolio, params)
     val summaryStats = computeSummaryStats(simulatedYears, params)
 
+    val tower = params.pricingParameters.layerTower
+    val layerOutcomes =
+      if (tower.isEmpty) Vector.empty
+      else simulatedYears.map(y => canopy.engine.property.financial.LayerTower.runYear(tower, y.eventNetLosses))
+
     Result(
       params = params,
       portfolio = normalizedPortfolio,
@@ -294,7 +313,8 @@ object Hurdat2PropertyCatPricingYltSimulator {
       historicalYears = historicalYears,
       simulatedYears = simulatedYears,
       riskMetrics = riskMetrics,
-      summaryStats = summaryStats
+      summaryStats = summaryStats,
+      layerOutcomes = layerOutcomes
     )
   }
 

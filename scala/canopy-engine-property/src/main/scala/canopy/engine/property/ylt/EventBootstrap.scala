@@ -57,7 +57,8 @@ object EventBootstrap {
         netLoss = netLoss,
         maxEventGrossLoss = maxEventGross,
         maxEventNetLoss = maxEventNet,
-        maxEventCededLoss = maxEventCeded
+        maxEventCededLoss = maxEventCeded,
+        eventNetLosses = events.map(_.netLoss)
       )
     }
   }
