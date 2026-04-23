@@ -1,10 +1,11 @@
 import { lazy, Suspense, useMemo } from "react";
 import type { PricingYltDisplay } from "@/types/display";
-import type { PosteriorBundle } from "@/types/api";
+import type { PosteriorBundle, PropertyCatPricingYltOutput } from "@/types/api";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { SummaryStrip } from "@/components/shared/summary-strip";
 import { DataTable } from "@/components/shared/data-table";
 import { ChartSkeleton } from "@/components/shared/loading-skeleton";
+import { TechnicalPremiumPanel } from "./technical-premium-panel";
 
 const LossExceedanceCurve = lazy(
   () => import("../charts/loss-exceedance-curve")
@@ -22,6 +23,16 @@ interface PricingResultsProps {
 export function PricingResults({ pricingYlt, bundle }: PricingResultsProps) {
   const currency =
     pricingYlt.currency ?? bundle.riskMetrics.currency ?? "USD";
+  // Pull the Phase-3 technical-premium / TVaR / tower-frequency fields off
+  // any of the module-output slots the engine might have used. The panel
+  // silently returns null if none are present.
+  const pricingOutput: PropertyCatPricingYltOutput | undefined =
+    bundle.moduleOutputs?.propertyCatPricing ??
+    bundle.moduleOutputs?.propertyCatPricingYlt ??
+    bundle.moduleOutputs?.pricingYlt ??
+    bundle.propertyCatPricing ??
+    bundle.propertyCatPricingYlt ??
+    bundle.pricingYlt;
 
   const visibleRows = useMemo(
     () =>
@@ -94,6 +105,8 @@ export function PricingResults({ pricingYlt, bundle }: PricingResultsProps) {
           />
         )}
       </Suspense>
+
+      <TechnicalPremiumPanel pricingOutput={pricingOutput} currency={currency} />
 
       <DataTable
         columns={[
