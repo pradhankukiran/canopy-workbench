@@ -278,16 +278,13 @@ object Hurdat2IlsTriggerCli {
     }
   }
 
-  // Convergence gates mirror the Pricing engine (phase 4.3). R-hat is
-  // the primary convergence indicator; ESS gates the precision of
-  // posterior statistics. Low ESS with near-perfect R-hat reflects a
-  // concentrated posterior, not a broken sampler, so we accept that
-  // case at a lower ESS bar.
+  // Convergence gates mirror the Pricing engine. Standard MCMC
+  // interpretation: R-hat is the CONVERGENCE indicator, ESS is a
+  // PRECISION indicator. Status classifies R-hat; low ESS adds an
+  // advisory warning but does NOT downgrade to failed.
   private val RHatConvergedMax: Double = 1.05d
-  private val RHatNearPerfect: Double = 1.02d
-  private val EssConvergedMin: Double = 100d
   private val RHatWarningMax: Double = 1.10d
-  private val EssWarningMin: Double = 30d
+  private val EssAdvisoryMin: Double = 100d
 
   private def diagnosticsJson(
       calibration: Option[MpiRainierCalibrator.Output],
@@ -297,31 +294,26 @@ object Hurdat2IlsTriggerCli {
       case Some(output) =>
         output.diagnostics match {
           case Some(d) =>
-            val chainsMixed = d.rHatMax <= RHatConvergedMax
-            val essOk = d.essMin >= EssConvergedMin
-            val rhatNearPerfect = d.rHatMax <= RHatNearPerfect
             val status =
-              if (chainsMixed && (essOk || rhatNearPerfect)) "converged"
-              else if (d.rHatMax <= RHatWarningMax && d.essMin >= EssWarningMin) "warning"
+              if (d.rHatMax <= RHatConvergedMax) "converged"
+              else if (d.rHatMax <= RHatWarningMax) "warning"
               else "failed"
-            val warnings = Vector(
-              if (!chainsMixed) Some(f"R-hat ${d.rHatMax}%.3f exceeds ${RHatConvergedMax}") else None,
-              if (!essOk && !rhatNearPerfect)
-                Some(f"ESS ${d.essMin}%.0f below ${EssConvergedMin}%.0f") else None
-            ).flatten
             val obj = ujson.Obj(
               "status" -> ujson.Str(status),
               "rHatMax" -> ujson.Num(round(d.rHatMax)),
               "rHatThreshold" -> ujson.Num(RHatConvergedMax),
               "essMin" -> ujson.Num(round(d.essMin, 2)),
-              "essThreshold" -> ujson.Num(EssConvergedMin),
+              "essAdvisoryThreshold" -> ujson.Num(EssAdvisoryMin),
               "source" -> ujson.Str("rainier-mcmc")
             )
-            if (rhatNearPerfect && !essOk) {
-              obj("note") = ujson.Str(
-                "R-hat near 1.0 with low ESS typically indicates a narrow, concentrated posterior rather than a sampling problem."
-              )
-            }
+            val warnings = Vector(
+              if (status != "converged")
+                Some(f"R-hat ${d.rHatMax}%.3f exceeds the ${RHatConvergedMax} convergence threshold")
+              else None,
+              if (d.essMin < EssAdvisoryMin)
+                Some(f"ESS ${d.essMin}%.0f is below the ${EssAdvisoryMin}%.0f advisory floor; posterior statistics have higher sampling noise (common with narrow posteriors, not a convergence problem)")
+              else None
+            ).flatten
             if (warnings.nonEmpty) {
               obj("warnings") = ujson.Arr.from(warnings.map(ujson.Str(_)))
             }

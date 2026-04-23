@@ -635,19 +635,15 @@ object Hurdat2PropertyCatPricingYltCli {
   }
 
   // Convergence gates (phase 4.3, refined after first production run).
-  // Standard Gelman-Rubin cutoff is R-hat <= 1.05 for "chains mixed".
-  // Standard ESS guidance is >= 100 for mean / credible-interval
-  // inference (the prior >= 400 threshold was for tail-quantile
-  // inference on full posterior-predictive, not the scalar rate we
-  // actually estimate here). Additionally, when R-hat is essentially
-  // 1.0 (<= 1.02) the posterior is near-degenerate and a low ESS
-  // reflects a concentrated posterior rather than a broken sampler,
-  // so we accept that case even with ESS in the tens.
+  // Match the standard MCMC interpretation:
+  //   R-hat is the CONVERGENCE indicator (chains agree on the posterior)
+  //   ESS is a PRECISION indicator (how sharp are the sample statistics)
+  // The status field classifies convergence; low ESS with good R-hat adds
+  // a "lowEffectiveSamples" note but does NOT downgrade to failed, which
+  // the old rule did and mis-flagged every narrow-posterior fit.
   private val RHatConvergedMax: Double = 1.05d
-  private val RHatNearPerfect: Double = 1.02d
-  private val EssConvergedMin: Double = 100d
   private val RHatWarningMax: Double = 1.10d
-  private val EssWarningMin: Double = 30d
+  private val EssAdvisoryMin: Double = 100d
 
   private def diagnosticsJson(
       calibration: Option[MpiRainierCalibrator.Output],
@@ -662,34 +658,26 @@ object Hurdat2PropertyCatPricingYltCli {
       case Some(output) =>
         output.diagnostics match {
           case Some(d) =>
-            val chainsMixed = d.rHatMax <= RHatConvergedMax
-            val essOk = d.essMin >= EssConvergedMin
-            val rhatNearPerfect = d.rHatMax <= RHatNearPerfect
             val status =
-              if (chainsMixed && (essOk || rhatNearPerfect)) "converged"
-              else if (d.rHatMax <= RHatWarningMax && d.essMin >= EssWarningMin) "warning"
+              if (d.rHatMax <= RHatConvergedMax) "converged"
+              else if (d.rHatMax <= RHatWarningMax) "warning"
               else "failed"
-            val warnings = Vector(
-              if (!chainsMixed) Some(f"R-hat ${d.rHatMax}%.3f exceeds ${RHatConvergedMax}") else None,
-              // Only surface the ESS warning when R-hat is not near-perfect;
-              // otherwise low ESS reflects a narrow posterior, not a broken
-              // sampler, and emitting a "warning" there would be misleading.
-              if (!essOk && !rhatNearPerfect)
-                Some(f"ESS ${d.essMin}%.0f below ${EssConvergedMin}%.0f") else None
-            ).flatten
             val obj = ujson.Obj(
               "status" -> ujson.Str(status),
               "rHatMax" -> ujson.Num(round(d.rHatMax)),
               "rHatThreshold" -> ujson.Num(RHatConvergedMax),
               "essMin" -> ujson.Num(round(d.essMin, 2)),
-              "essThreshold" -> ujson.Num(EssConvergedMin),
+              "essAdvisoryThreshold" -> ujson.Num(EssAdvisoryMin),
               "source" -> ujson.Str("rainier-mcmc")
             )
-            if (rhatNearPerfect && !essOk) {
-              obj("note") = ujson.Str(
-                "R-hat near 1.0 with low ESS typically indicates a narrow, concentrated posterior rather than a sampling problem."
-              )
-            }
+            val warnings = Vector(
+              if (status != "converged")
+                Some(f"R-hat ${d.rHatMax}%.3f exceeds the ${RHatConvergedMax} convergence threshold")
+              else None,
+              if (d.essMin < EssAdvisoryMin)
+                Some(f"ESS ${d.essMin}%.0f is below the ${EssAdvisoryMin}%.0f advisory floor; posterior statistics have higher sampling noise (common with narrow posteriors, not a convergence problem)")
+              else None
+            ).flatten
             if (warnings.nonEmpty) {
               obj("warnings") = ujson.Arr.from(warnings.map(ujson.Str(_)))
             }
