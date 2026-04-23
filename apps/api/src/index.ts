@@ -30,6 +30,7 @@ import {
   validatePropertyPortfolio,
   type ValidationFailure
 } from "./validation";
+import { summarizeDataSources } from "./data-sources";
 
 interface CreateUploadBody {
   workspaceId?: unknown;
@@ -342,6 +343,10 @@ async function main(): Promise<void> {
       redis: redisPing,
       queue: config.runQueueName
     };
+  });
+
+  app.get("/api/v1/data-sources", async () => {
+    return summarizeDataSources();
   });
 
   app.get("/api/v1/me", async (request) => {
