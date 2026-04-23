@@ -5,6 +5,50 @@ import canopy.data.hurdat2.{Hurdat2Dataset, Hurdat2Storm, Hurdat2TrackPoint}
 import scala.util.Random
 
 object Hurdat2PropertyCatPricingYltSimulator {
+
+  /** Named numerical parameters used by the baseline pricing heuristics.
+    *
+    * These values were previously inline literals scattered through the
+    * simulator. Extracting them into one place is a prerequisite for
+    * property-level overrides, per-run calibration, and meaningful golden
+    * diffs. Defaults reproduce the previous behavior exactly.
+    *
+    * Physical upgrades (Holland windfield, Hazus vulnerability curves,
+    * real AEP vs. OEP derivation) land in phases 2 and 3; the fields here
+    * are the surface they will replace.
+    */
+  final case class PricingParameters(
+      // Wind attenuation (fallback heuristic; phase 2 replaces with Holland).
+      defaultWindRadiusKm: Double = 140d,
+      minDecayScaleKm: Double = 60d,
+      radiusToDecayScaleRatio: Double = 1.15d,
+      nauticalMileKm: Double = 1.852d,
+      // Vulnerability curve (single power curve; phase 2 replaces with Hazus).
+      minDamagingWindKt: Double = 35d,
+      saturationWindKt: Double = 130d,
+      vulnerabilityExponent: Double = 2.25d,
+      // Peril modifiers.
+      perilFactorStormSurge: Double = 1.08d,
+      perilFactorWind: Double = 1d,
+      perilFactorOther: Double = 0.7d,
+      // Occupancy modifiers.
+      occupancyFactorIndustrial: Double = 1.10d,
+      occupancyFactorHospitality: Double = 1.05d,
+      occupancyFactorResidential: Double = 0.95d,
+      occupancyFactorCommercial: Double = 1.00d,
+      occupancyFactorDefault: Double = 1.00d,
+      // Risk-metric quantile choices.
+      var99Quantile: Double = 0.99d,
+      exhaustionQuantile: Double = 0.95d,
+      // AEP curve scale relative to OEP. Phase 3 replaces this with a real
+      // aggregate-loss derivation from a stochastic catalog.
+      aepScale: Double = 0.94d
+  )
+
+  object PricingParameters {
+    val default: PricingParameters = PricingParameters()
+  }
+
   final case class Params(
       simulatedYears: Int,
       returnPeriodsYears: Vector[Int],
@@ -13,7 +57,8 @@ object Hurdat2PropertyCatPricingYltSimulator {
       includeGrossNetBreakout: Boolean,
       includeSummaryPercentiles: Boolean,
       currency: String,
-      randomSeed: Int
+      randomSeed: Int,
+      pricingParameters: PricingParameters = PricingParameters.default
   ) {
     val normalizedSimulatedYears: Int =
       if (simulatedYears <= 0) 1000 else simulatedYears
@@ -268,13 +313,14 @@ object Hurdat2PropertyCatPricingYltSimulator {
     val stdDevLoss = math.sqrt(variance)
     val attachmentProbability = basis.count(_ > 0d).toDouble / n.toDouble
 
+    val pp = params.pricingParameters
     val sortedBasis = basis.sorted
-    val var99 = quantile(sortedBasis, 0.99d)
+    val var99 = quantile(sortedBasis, pp.var99Quantile)
     val tvar99 = {
       val tail = sortedBasis.filter(_ >= var99)
       if (tail.isEmpty) var99 else tail.sum / tail.size.toDouble
     }
-    val exhaustionThreshold = quantile(sortedBasis, 0.95d)
+    val exhaustionThreshold = quantile(sortedBasis, pp.exhaustionQuantile)
     val exhaustionProbability =
       if (exhaustionThreshold <= 0d) 0d else basis.count(_ >= exhaustionThreshold).toDouble / n.toDouble
 
@@ -308,7 +354,7 @@ object Hurdat2PropertyCatPricingYltSimulator {
       var99 = var99,
       tvar99 = tvar99,
       oep = curvePoints(gross, net, ceded, 1d),
-      aep = curvePoints(gross, net, ceded, 0.94d)
+      aep = curvePoints(gross, net, ceded, pp.aepScale)
     )
   }
 
@@ -337,9 +383,10 @@ object Hurdat2PropertyCatPricingYltSimulator {
     val peakStormWind = storm.maxWindKt.getOrElse(0)
     if (peakStormWind <= 0) return None
 
+    val pp = params.pricingParameters
     val losses = portfolio.locations.map { loc =>
-      val siteWind = maxSiteWindKt(storm.track, loc)
-      val groundUp = modeledGroundUpLoss(loc, siteWind)
+      val siteWind = maxSiteWindKt(storm.track, loc, pp)
+      val groundUp = modeledGroundUpLoss(loc, siteWind, pp)
       val insured = modeledInsuredLoss(loc, groundUp)
       val ceded = math.max(0d, groundUp - insured)
       (siteWind, groundUp, ceded, insured)
@@ -376,11 +423,11 @@ object Hurdat2PropertyCatPricingYltSimulator {
       case _       => net
     }
 
-  private def maxSiteWindKt(track: Vector[Hurdat2TrackPoint], loc: PropertyLocation): Double =
+  private def maxSiteWindKt(track: Vector[Hurdat2TrackPoint], loc: PropertyLocation, pp: PricingParameters): Double =
     track
       .iterator
       .filter(point => tropicalStatus(point.status))
-      .map(point => attenuatedWindKt(point, loc))
+      .map(point => attenuatedWindKt(point, loc, pp))
       .foldLeft(0d)(_ max _)
 
   private def tropicalStatus(status: String): Boolean = {
@@ -388,10 +435,11 @@ object Hurdat2PropertyCatPricingYltSimulator {
     s == "TD" || s == "TS" || s == "HU" || s == "TY" || s == "ST" || s == "TC"
   }
 
-  private def attenuatedWindKt(point: Hurdat2TrackPoint, loc: PropertyLocation): Double = {
+  private def attenuatedWindKt(point: Hurdat2TrackPoint, loc: PropertyLocation, pp: PricingParameters): Double = {
     val distanceKm = haversineKm(loc.latitude, loc.longitude, point.latitude, point.longitude)
-    val windRadiusKm = point.windRadii34KtNm.map(avgRadiiNm).filter(_ > 0d).map(_ * 1.852d).getOrElse(140d)
-    val decayScaleKm = math.max(60d, windRadiusKm * 1.15d)
+    val windRadiusKm =
+      point.windRadii34KtNm.map(avgRadiiNm).filter(_ > 0d).map(_ * pp.nauticalMileKm).getOrElse(pp.defaultWindRadiusKm)
+    val decayScaleKm = math.max(pp.minDecayScaleKm, windRadiusKm * pp.radiusToDecayScaleRatio)
     val attenuation = math.exp(-distanceKm / decayScaleKm)
     point.maxWindKt.toDouble * attenuation
   }
@@ -401,14 +449,15 @@ object Hurdat2PropertyCatPricingYltSimulator {
     if (values.isEmpty) 0d else values.sum / values.size.toDouble
   }
 
-  private def modeledGroundUpLoss(loc: PropertyLocation, siteWindKt: Double): Double = {
+  private def modeledGroundUpLoss(loc: PropertyLocation, siteWindKt: Double, pp: PricingParameters): Double = {
     if (!supportsWindPeril(loc)) return 0d
-    if (siteWindKt < 35d) return 0d
+    if (siteWindKt < pp.minDamagingWindKt) return 0d
 
-    val x = clamp01((siteWindKt - 35d) / (130d - 35d))
-    val occupancyFactor = occupancyVulnerabilityFactor(loc.occupancy)
-    val perilFactor = perilExposureFactor(loc.perilSet)
-    val vulnerabilityRatio = clamp01(math.pow(x, 2.25d) * occupancyFactor * perilFactor)
+    val span = pp.saturationWindKt - pp.minDamagingWindKt
+    val x = clamp01((siteWindKt - pp.minDamagingWindKt) / span)
+    val occupancyFactor = occupancyVulnerabilityFactor(loc.occupancy, pp)
+    val perilFactor = perilExposureFactor(loc.perilSet, pp)
+    val vulnerabilityRatio = clamp01(math.pow(x, pp.vulnerabilityExponent) * occupancyFactor * perilFactor)
     loc.tiv * vulnerabilityRatio
   }
 
@@ -420,20 +469,20 @@ object Hurdat2PropertyCatPricingYltSimulator {
     }
   }
 
-  private def perilExposureFactor(perils: Vector[String]): Double = {
-    if (perils.isEmpty) 1d
-    else if (perils.exists(_.toUpperCase.contains("STORM_SURGE"))) 1.08d
-    else if (perils.exists(_.toUpperCase.contains("WIND"))) 1d
-    else 0.7d
+  private def perilExposureFactor(perils: Vector[String], pp: PricingParameters): Double = {
+    if (perils.isEmpty) pp.perilFactorWind
+    else if (perils.exists(_.toUpperCase.contains("STORM_SURGE"))) pp.perilFactorStormSurge
+    else if (perils.exists(_.toUpperCase.contains("WIND"))) pp.perilFactorWind
+    else pp.perilFactorOther
   }
 
-  private def occupancyVulnerabilityFactor(occupancy: Option[String]): Double =
+  private def occupancyVulnerabilityFactor(occupancy: Option[String], pp: PricingParameters): Double =
     occupancy.map(_.trim.toLowerCase) match {
-      case Some(value) if value.contains("industrial")  => 1.10d
-      case Some(value) if value.contains("hospitality") => 1.05d
-      case Some(value) if value.contains("residential") => 0.95d
-      case Some(value) if value.contains("commercial")  => 1.00d
-      case _                                            => 1.00d
+      case Some(value) if value.contains("industrial")  => pp.occupancyFactorIndustrial
+      case Some(value) if value.contains("hospitality") => pp.occupancyFactorHospitality
+      case Some(value) if value.contains("residential") => pp.occupancyFactorResidential
+      case Some(value) if value.contains("commercial")  => pp.occupancyFactorCommercial
+      case _                                            => pp.occupancyFactorDefault
     }
 
   private def modeledInsuredLoss(loc: PropertyLocation, groundUpLoss: Double): Double = {
