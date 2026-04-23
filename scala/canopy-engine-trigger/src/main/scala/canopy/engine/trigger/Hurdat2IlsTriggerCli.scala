@@ -150,13 +150,21 @@ object Hurdat2IlsTriggerCli {
       runInput: RunInput,
       result: Hurdat2IlsParametricTriggerSimulator.Result
   ): ujson.Obj = {
+    // Phase-4-style: stop multiplying every output by a uniform
+    // Rainier scale factor. That approach inflated per-event payouts
+    // above the bond's notional when the Gaussian approximation of the
+    // posterior exceeded 1.0, and collapsed them toward zero when it
+    // was below 1.0 - neither is a valid reinsurance cash flow. Keep
+    // the deterministic simulator output as the quoted numbers; emit
+    // the calibration's scale factor on rainierCalibration.scaleFactor
+    // only, so downstream consumers can apply a calibration-adjusted
+    // view explicitly if they want one.
     val calibrationAttempt = calibrateWithRainier(runInput, result)
     val calibrationApplied = calibrationAttempt.toOption
-    val scaleFactor = calibrationApplied.map(_.scaleFactor).getOrElse(1d)
-    val scaledHistoricalYears = scaleHistoricalYears(result.historicalYears, scaleFactor)
-    val scaledSimulatedYears = scaleSimulatedYears(result.simulatedYears, scaleFactor)
-    val scaledHistoricalEvents = scaleStormEvents(result.historicalEvents, scaleFactor)
-    val risk = scaleRiskMetrics(result.riskMetrics, scaleFactor)
+    val scaledHistoricalYears = result.historicalYears
+    val scaledSimulatedYears = result.simulatedYears
+    val scaledHistoricalEvents = result.historicalEvents
+    val risk = result.riskMetrics
     val triggerModuleOutput = ujson.Obj(
       "currency" -> ujson.Str(result.params.normalizedCurrency),
       "triggerMetric" -> ujson.Str("maxWindKt"),
@@ -270,89 +278,78 @@ object Hurdat2IlsTriggerCli {
     }
   }
 
+  // Convergence gates mirror the Pricing engine (phase 4.3). R-hat is
+  // the primary convergence indicator; ESS gates the precision of
+  // posterior statistics. Low ESS with near-perfect R-hat reflects a
+  // concentrated posterior, not a broken sampler, so we accept that
+  // case at a lower ESS bar.
+  private val RHatConvergedMax: Double = 1.05d
+  private val RHatNearPerfect: Double = 1.02d
+  private val EssConvergedMin: Double = 100d
+  private val RHatWarningMax: Double = 1.10d
+  private val EssWarningMin: Double = 30d
+
   private def diagnosticsJson(
       calibration: Option[MpiRainierCalibrator.Output],
-      fallbackSampleCount: Int
+      @annotation.unused fallbackSampleCount: Int
   ): ujson.Obj =
-    calibration.flatMap(_.diagnostics) match {
-      case Some(d) =>
-        ujson.Obj(
-          "rHatMax" -> ujson.Num(round(d.rHatMax)),
-          "essMin" -> ujson.Num(round(d.essMin, 2))
-        )
+    calibration match {
+      case Some(output) =>
+        output.diagnostics match {
+          case Some(d) =>
+            val chainsMixed = d.rHatMax <= RHatConvergedMax
+            val essOk = d.essMin >= EssConvergedMin
+            val rhatNearPerfect = d.rHatMax <= RHatNearPerfect
+            val status =
+              if (chainsMixed && (essOk || rhatNearPerfect)) "converged"
+              else if (d.rHatMax <= RHatWarningMax && d.essMin >= EssWarningMin) "warning"
+              else "failed"
+            val warnings = Vector(
+              if (!chainsMixed) Some(f"R-hat ${d.rHatMax}%.3f exceeds ${RHatConvergedMax}") else None,
+              if (!essOk && !rhatNearPerfect)
+                Some(f"ESS ${d.essMin}%.0f below ${EssConvergedMin}%.0f") else None
+            ).flatten
+            val obj = ujson.Obj(
+              "status" -> ujson.Str(status),
+              "rHatMax" -> ujson.Num(round(d.rHatMax)),
+              "rHatThreshold" -> ujson.Num(RHatConvergedMax),
+              "essMin" -> ujson.Num(round(d.essMin, 2)),
+              "essThreshold" -> ujson.Num(EssConvergedMin),
+              "source" -> ujson.Str("rainier-mcmc")
+            )
+            if (rhatNearPerfect && !essOk) {
+              obj("note") = ujson.Str(
+                "R-hat near 1.0 with low ESS typically indicates a narrow, concentrated posterior rather than a sampling problem."
+              )
+            }
+            if (warnings.nonEmpty) {
+              obj("warnings") = ujson.Arr.from(warnings.map(ujson.Str(_)))
+            }
+            obj
+          case None =>
+            ujson.Obj(
+              "status" -> ujson.Str("no_mcmc_diagnostics"),
+              "reason" -> ujson.Str(
+                "Rainier calibration ran a non-MCMC path so no R-hat/ESS are available."
+              )
+            )
+        }
       case None =>
         ujson.Obj(
-          "rHatMax" -> ujson.Num(1.0),
-          "essMin" -> ujson.Num(math.max(200, fallbackSampleCount))
+          "status" -> ujson.Str("skipped"),
+          "reason" -> ujson.Str(
+            "Rainier calibration was not applied for this run."
+          )
         )
     }
 
-  private def scaleStormEvents(
-      rows: Vector[Hurdat2IlsParametricTriggerSimulator.StormTriggerEvent],
-      rawFactor: Double
-  ): Vector[Hurdat2IlsParametricTriggerSimulator.StormTriggerEvent] = {
-    val factor = sanitizeScaleFactor(rawFactor)
-    rows.map(row =>
-      row.copy(
-        payoutPct = clamp01(row.payoutPct * factor),
-        payoutAmount = row.payoutAmount * factor
-      )
-    )
-  }
-
-  private def scaleHistoricalYears(
-      rows: Vector[Hurdat2IlsParametricTriggerSimulator.HistoricalYearSummary],
-      rawFactor: Double
-  ): Vector[Hurdat2IlsParametricTriggerSimulator.HistoricalYearSummary] = {
-    val factor = sanitizeScaleFactor(rawFactor)
-    rows.map(row =>
-      row.copy(
-        annualPayoutAmount = row.annualPayoutAmount * factor,
-        annualPayoutPct = clamp01(row.annualPayoutPct * factor),
-        events = scaleStormEvents(row.events, factor)
-      )
-    )
-  }
-
-  private def scaleSimulatedYears(
-      rows: Vector[Hurdat2IlsParametricTriggerSimulator.SimulatedYearOutcome],
-      rawFactor: Double
-  ): Vector[Hurdat2IlsParametricTriggerSimulator.SimulatedYearOutcome] = {
-    val factor = sanitizeScaleFactor(rawFactor)
-    rows.map(row =>
-      row.copy(
-        payoutPct = clamp01(row.payoutPct * factor),
-        payoutAmount = row.payoutAmount * factor,
-        sourceEvents = scaleStormEvents(row.sourceEvents, factor)
-      )
-    )
-  }
-
-  private def scaleRiskMetrics(
-      risk: Hurdat2IlsParametricTriggerSimulator.RiskMetrics,
-      rawFactor: Double
-  ): Hurdat2IlsParametricTriggerSimulator.RiskMetrics = {
-    val factor = sanitizeScaleFactor(rawFactor)
-    risk.copy(
-      expectedLoss = risk.expectedLoss * factor,
-      expectedLossRate = clamp01(risk.expectedLossRate * factor),
-      stdDevLoss = risk.stdDevLoss * factor,
-      var99 = risk.var99 * factor,
-      tvar99 = risk.tvar99 * factor,
-      oep = risk.oep.map(point => scaleReturnPeriodPoint(point, factor)),
-      aep = risk.aep.map(point => scaleReturnPeriodPoint(point, factor))
-    )
-  }
-
-  private def scaleReturnPeriodPoint(
-      point: Hurdat2IlsParametricTriggerSimulator.ReturnPeriodPoint,
-      factor: Double
-  ): Hurdat2IlsParametricTriggerSimulator.ReturnPeriodPoint =
-    point.copy(
-      grossLoss = point.grossLoss * factor,
-      netLoss = point.netLoss * factor,
-      bondPayout = point.bondPayout * factor
-    )
+  // scaleStormEvents / scaleHistoricalYears / scaleSimulatedYears /
+  // scaleRiskMetrics / scaleReturnPeriodPoint were removed. They applied
+  // a uniform Rainier scale factor to every output - the same phase-1
+  // shortcut that the Pricing engine carried and that was fixed in
+  // f51bf20. In the Trigger module the bug was particularly visible
+  // because the scale multiplied per-event payouts, which caused
+  // individual years to report payoutAmount > notional.
 
   private def riskMetricsJson(risk: Hurdat2IlsParametricTriggerSimulator.RiskMetrics): ujson.Obj =
     ujson.Obj(
@@ -557,9 +554,6 @@ object Hurdat2IlsTriggerCli {
 
   private def clamp01(value: Double): Double =
     math.max(0d, math.min(1d, value))
-
-  private def sanitizeScaleFactor(value: Double): Double =
-    if (value.isFinite && value > 0d) value else 1d
 
   private def round(value: Double, scale: Int = 6): Double = {
     val factor = math.pow(10d, scale.toDouble)
