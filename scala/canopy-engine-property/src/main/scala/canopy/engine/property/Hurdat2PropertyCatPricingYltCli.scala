@@ -558,26 +558,32 @@ object Hurdat2PropertyCatPricingYltCli {
       case _       => row.netLoss
     }
 
+    // attachmentReached and bondExhausted are intentionally omitted here:
+    // there is no layer / cat-bond tower in the current financial model, so
+    // both are placeholder concepts. Phase 3 introduces a real LayerTower
+    // and will re-emit these with real attachment/exhaustion logic.
     ujson.Obj(
       "yearIndex" -> ujson.Num(row.yearIndex),
       "sourceYear" -> ujson.Num(row.sourceYear),
       "eventCount" -> ujson.Num(row.eventCount),
       "grossLoss" -> ujson.Num(round(row.grossLoss, 2)),
-      "cededLoss" -> ujson.Num(round(row.cededLoss, 2)),
+      "retainedLoss" -> ujson.Num(round(row.cededLoss, 2)),
       "netLoss" -> ujson.Num(round(row.netLoss, 2)),
-      "loss" -> ujson.Num(round(selectedLoss, 2)),
-      "attachmentReached" -> ujson.Bool(selectedLoss > 0d)
+      "loss" -> ujson.Num(round(selectedLoss, 2))
     )
   }
 
   private def yearOutcomeJson(row: Hurdat2PropertyCatPricingYltSimulator.SimulatedYearLoss): ujson.Obj =
+    // bondExhausted is omitted (no layer configured). aggregateCededLoss is
+    // renamed to aggregateRetainedLoss because under the current model the
+    // field represents the site-level retention (groundUp - insured), not
+    // ceded reinsurance. Phase 3's layer tower will add true cession fields.
     ujson.Obj(
       "yearIndex" -> ujson.Num(row.yearIndex),
       "eventCount" -> ujson.Num(row.eventCount),
       "aggregateGrossLoss" -> ujson.Num(round(row.grossLoss, 2)),
-      "aggregateCededLoss" -> ujson.Num(round(row.cededLoss, 2)),
-      "aggregateNetLoss" -> ujson.Num(round(row.netLoss, 2)),
-      "bondExhausted" -> ujson.Bool(false)
+      "aggregateRetainedLoss" -> ujson.Num(round(row.cededLoss, 2)),
+      "aggregateNetLoss" -> ujson.Num(round(row.netLoss, 2))
     )
 
   private def riskMetricsJson(risk: Hurdat2PropertyCatPricingYltSimulator.RiskMetrics): ujson.Obj =

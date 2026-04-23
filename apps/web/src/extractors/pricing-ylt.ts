@@ -55,6 +55,8 @@ export function extractPricingYlt(
         asFiniteNumber(row.aggregateGrossLoss) ??
         asFiniteNumber(row.gross);
       const cededLoss =
+        asFiniteNumber(row.retainedLoss) ??
+        asFiniteNumber(row.aggregateRetainedLoss) ??
         asFiniteNumber(row.cededLoss) ??
         asFiniteNumber(row.aggregateCededLoss) ??
         asFiniteNumber(row.ceded);

@@ -119,9 +119,9 @@ export interface RunResultRecord {
     yearIndex: number;
     eventCount: number;
     aggregateGrossLoss: number;
-    aggregateCededLoss: number;
+    aggregateRetainedLoss: number;
     aggregateNetLoss: number;
-    bondExhausted: boolean;
+    bondExhausted?: boolean;
   }>;
   diagnostics: {
     status?: "converged" | "skipped" | "no_mcmc_diagnostics" | "failed";

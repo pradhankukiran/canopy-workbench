@@ -660,10 +660,11 @@ function normalizeYearOutcomes(
       0,
       roundInt(asNumber(row.aggregateGrossLoss) ?? asNumber(row.grossLoss) ?? 0)
     );
-    const aggregateCededLoss = Math.max(
+    const aggregateRetainedLoss = Math.max(
       0,
       roundInt(
-        asNumber(row.aggregateCededLoss) ??
+        asNumber(row.aggregateRetainedLoss) ??
+          asNumber(row.aggregateCededLoss) ??
           asNumber(row.bondPayout) ??
           asNumber(row.payoutAmount) ??
           0
@@ -674,22 +675,26 @@ function normalizeYearOutcomes(
       roundInt(
         asNumber(row.aggregateNetLoss) ??
           asNumber(row.netLoss) ??
-          Math.max(0, aggregateGrossLoss - aggregateCededLoss)
+          Math.max(0, aggregateGrossLoss - aggregateRetainedLoss)
       )
     );
+
+    // bondExhausted is only set when the engine emits a real layer-tower
+    // flag. Until phase 3 lands the tower, the pricing engine omits it and
+    // we leave it undefined here rather than synthesizing false.
+    const bondExhausted =
+      asBoolean(row.bondExhausted) ??
+      asBoolean(row.exhausted) ??
+      asBoolean(row.exhaustionReached);
 
     return [
       {
         yearIndex,
         eventCount,
         aggregateGrossLoss,
-        aggregateCededLoss,
+        aggregateRetainedLoss,
         aggregateNetLoss,
-        bondExhausted:
-          asBoolean(row.bondExhausted) ??
-          asBoolean(row.exhausted) ??
-          asBoolean(row.exhaustionReached) ??
-          false
+        ...(bondExhausted !== undefined ? { bondExhausted } : {})
       }
     ];
   });
