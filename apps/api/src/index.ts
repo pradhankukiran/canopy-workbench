@@ -31,6 +31,7 @@ import {
   type ValidationFailure
 } from "./validation";
 import { summarizeDataSources } from "./data-sources";
+import { RateLimiter } from "./rate-limit";
 
 interface CreateUploadBody {
   workspaceId?: unknown;
@@ -259,6 +260,16 @@ async function main(): Promise<void> {
 
   await app.register(cors, { origin: true });
 
+  // Phase 5.6 rate limiting: in-memory token bucket per API key (or the
+  // string "anonymous"). Configurable via env so deployments can relax
+  // or tighten the ceiling. Defaults: 10 rps sustained with a 30-token
+  // burst, comfortable for a single underwriter interactive session.
+  const rateLimiter = new RateLimiter({
+    tokensPerSecond: readIntEnv("API_RATE_LIMIT_RPS", 10),
+    burst: readIntEnv("API_RATE_LIMIT_BURST", 30)
+  });
+  const RATE_LIMIT_EXEMPT = new Set<string>(["/health"]);
+
   // Optional one-time seed of a bootstrap API key so a fresh deployment can
   // make authenticated calls without running a separate migration step.
   // Set CANOPY_BOOTSTRAP_API_KEY to a ck_-prefixed string in the environment;
@@ -292,7 +303,29 @@ async function main(): Promise<void> {
   const AUTH_EXEMPT = new Set<string>(["/health"]);
   app.decorateRequest("principal", null);
   app.addHook("preHandler", async (request, reply) => {
-    if (AUTH_EXEMPT.has(request.routeOptions.url ?? request.url)) return;
+    const routeUrl = request.routeOptions.url ?? request.url;
+    if (AUTH_EXEMPT.has(routeUrl)) return;
+
+    // Phase 5.6: rate-limit before doing auth work. Use whatever caller
+    // identifier we can get cheaply from the headers (API key prefix or
+    // client IP) so a hot-looping unauthenticated bot doesn't get to
+    // waste scrypt cycles.
+    if (!RATE_LIMIT_EXEMPT.has(routeUrl)) {
+      const token = extractBearerToken(
+        request.headers as Record<string, string | string[] | undefined>
+      );
+      const key = token ? `key:${prefixOf(token)}` : `ip:${request.ip}`;
+      const decision = rateLimiter.take(key);
+      if (!decision.allowed) {
+        reply.header("Retry-After", Math.ceil(decision.retryAfterMs / 1000));
+        return reply.code(429).send(
+          apiError(
+            `Rate limit exceeded; retry after ~${Math.ceil(decision.retryAfterMs / 1000)}s`,
+            "rate_limited"
+          )
+        );
+      }
+    }
 
     const token = extractBearerToken(request.headers as Record<string, string | string[] | undefined>);
 
@@ -614,19 +647,49 @@ async function main(): Promise<void> {
     async (request, reply) => submitRun(request, reply, { forceAnalysisType: "risk" })
   );
 
+  // Phase 5.6: tenant isolation. When a caller resolves to a Principal,
+  // their workspaceId is the authoritative scope. A run record outside
+  // that workspace looks like "not found" so the API doesn't reveal the
+  // existence of other tenants' runs. We 404 (not 403) deliberately.
+  const ensureRunInScope = (
+    run: RunRecord | null,
+    runId: string,
+    principal: Principal | undefined
+  ): { ok: true; run: RunRecord } | { ok: false; error: { code: number; body: unknown } } => {
+    if (!run) {
+      return {
+        ok: false,
+        error: { code: 404, body: apiError(`Run ${runId} not found`, "not_found") }
+      };
+    }
+    if (principal && run.workspaceId !== principal.workspaceId) {
+      return {
+        ok: false,
+        error: { code: 404, body: apiError(`Run ${runId} not found`, "not_found") }
+      };
+    }
+    return { ok: true, run };
+  };
+
   app.get<{ Params: { runId: string } }>("/api/v1/runs/:runId", async (request, reply) => {
     const run = await store.getRun(request.params.runId);
-    if (!run) {
-      return reply.code(404).send(apiError(`Run ${request.params.runId} not found`, "not_found"));
-    }
-    return toApiRun(run);
+    const scope = ensureRunInScope(
+      run,
+      request.params.runId,
+      (request as { principal?: Principal }).principal
+    );
+    if (!scope.ok) return reply.code(scope.error.code).send(scope.error.body);
+    return toApiRun(scope.run);
   });
 
   app.get<{ Params: { runId: string } }>("/api/v1/runs/:runId/events", async (request, reply) => {
     const run = await store.getRun(request.params.runId);
-    if (!run) {
-      return reply.code(404).send(apiError(`Run ${request.params.runId} not found`, "not_found"));
-    }
+    const scope = ensureRunInScope(
+      run,
+      request.params.runId,
+      (request as { principal?: Principal }).principal
+    );
+    if (!scope.ok) return reply.code(scope.error.code).send(scope.error.body);
 
     const page = await store.getRunEventsPage(request.params.runId);
     return {
@@ -639,9 +702,12 @@ async function main(): Promise<void> {
     "/api/v1/runs/:runId/results",
     async (request, reply) => {
       const run = await store.getRun(request.params.runId);
-      if (!run) {
-        return reply.code(404).send(apiError(`Run ${request.params.runId} not found`, "not_found"));
-      }
+      const scope = ensureRunInScope(
+        run,
+        request.params.runId,
+        (request as { principal?: Principal }).principal
+      );
+      if (!scope.ok) return reply.code(scope.error.code).send(scope.error.body);
 
       const result = await store.getRunResult(request.params.runId);
       if (!result) {
