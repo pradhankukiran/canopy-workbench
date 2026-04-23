@@ -2,7 +2,7 @@ package canopy.engine.property
 
 import canopy.data.hurdat2.{Hurdat2Dataset, Hurdat2Storm}
 import canopy.engine.property.financial.SiteTerms
-import canopy.engine.property.hazard.Windfield
+import canopy.engine.property.hazard.{StormSurge, Windfield}
 import canopy.engine.property.vulnerability.Vulnerability
 
 import scala.util.Random
@@ -54,6 +54,13 @@ object Hurdat2PropertyCatPricingYltSimulator {
       // swaps in a Natural Earth-based resolver loaded via the
       // DataRegistry.
       useHardcodedLandMask: Boolean = true,
+      // Phase 2.7a: separate storm-surge loss path. When enabled,
+      // locations with STORM_SURGE in their peril set receive an
+      // additive surge loss based on a Saffir-Simpson-indexed height
+      // decayed with distance from the storm's peak-intensity track.
+      // When disabled, the wind path's perilFactorStormSurge multiplier
+      // (1.08) remains in play as the phase-1 fallback.
+      useStormSurge: Boolean = true,
       rmaxFromR34Factor: Double = 0.35d,
       // Rmax climatology. "willoughby2006" uses Willoughby, Darling & Rahn
       // 2006:  Rmax = 46.4 * exp(-0.0155 V_max_ms + 0.0169 |lat|) - the
@@ -469,7 +476,12 @@ object Hurdat2PropertyCatPricingYltSimulator {
     val rng = new Random(stormSeed)
     val losses = portfolio.locations.map { loc =>
       val siteWind = Windfield.maxSiteWindKt(storm.track, loc, pp)
-      val groundUp = Vulnerability.modeledGroundUpLoss(loc, siteWind, pp, rng)
+      val windLoss = Vulnerability.modeledGroundUpLoss(loc, siteWind, pp, rng)
+      val surgeLoss = StormSurge.modeledSurgeLoss(storm, loc, pp)
+      // Combine wind and surge ground-up losses, bounded by TIV so a
+      // location cannot "lose more than it's worth" when both perils
+      // reach saturation simultaneously.
+      val groundUp = math.min(loc.tiv, windLoss + surgeLoss)
       val insured = SiteTerms.modeledInsuredLoss(loc, groundUp)
       val ceded = math.max(0d, groundUp - insured)
       (siteWind, groundUp, ceded, insured)
