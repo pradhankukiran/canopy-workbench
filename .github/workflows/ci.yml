@@ -16,37 +16,89 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Lint (placeholder)
+  typecheck:
+    name: TypeScript typecheck
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Lint placeholder
-        run: |
-          echo "Phase 0 CI skeleton"
-          echo "TODO: add repo-specific lint commands"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: pnpm/action-setup@v3
+        with:
+          version: "9.15.0"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck all workspaces
+        run: pnpm -r typecheck
 
-  test:
-    name: Test (placeholder)
+  test-ts:
+    name: TypeScript tests
     runs-on: ubuntu-latest
-    needs: lint
+    needs: typecheck
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Test placeholder
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: pnpm/action-setup@v3
+        with:
+          version: "9.15.0"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run vitest
+        run: pnpm test
+
+  test-scala:
+    name: Scala tests + golden discipline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "8"
+      - uses: sbt/setup-sbt@v1
+      - name: Cache sbt
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+            ~/.cache/coursier
+          key: sbt-${{ runner.os }}-${{ hashFiles('**/build.sbt', 'project/**') }}
+          restore-keys: |
+            sbt-${{ runner.os }}-
+      - name: Run ScalaTest + ScalaCheck
+        run: sbt -batch test
+      - name: Check for golden drift without GOLDEN_CHANGE
+        # Fail the build if the baseline goldens moved but the PR body
+        # doesn't explain why. Branches covered are PRs only; scheduled
+        # merges to main can regenerate goldens on purpose.
+        if: github.event_name == 'pull_request'
         run: |
-          echo "Phase 0 CI skeleton"
-          echo "TODO: add repo-specific test commands"
+          if git diff --exit-code HEAD -- scala/canopy-engine-property/src/test/resources/golden/; then
+            echo "No golden drift."
+          else
+            echo "::error::Golden files changed but this build does not include an explanation."
+            echo "::error::Add a GOLDEN_CHANGE note to the PR body summarising drift direction and magnitude."
+            exit 1
+          fi
 
   build:
-    name: Build (placeholder)
+    name: Build all packages
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test-ts, test-scala]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Build placeholder
-        run: |
-          echo "Phase 0 CI skeleton"
-          echo "TODO: add repo-specific build commands"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: pnpm/action-setup@v3
+        with:
+          version: "9.15.0"
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm -r build
