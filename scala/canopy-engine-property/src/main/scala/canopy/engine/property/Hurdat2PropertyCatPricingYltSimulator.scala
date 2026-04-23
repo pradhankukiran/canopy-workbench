@@ -1,6 +1,9 @@
 package canopy.engine.property
 
-import canopy.data.hurdat2.{Hurdat2Dataset, Hurdat2Storm, Hurdat2TrackPoint}
+import canopy.data.hurdat2.{Hurdat2Dataset, Hurdat2Storm}
+import canopy.engine.property.financial.SiteTerms
+import canopy.engine.property.hazard.Windfield
+import canopy.engine.property.vulnerability.Vulnerability
 
 import scala.util.Random
 
@@ -370,11 +373,7 @@ object Hurdat2PropertyCatPricingYltSimulator {
   }
 
   private def basisLosses(rows: Vector[SimulatedYearLoss], params: Params): Vector[Double] =
-    params.normalizedLossBasis match {
-      case "gross" => rows.map(_.grossLoss)
-      case "ceded" => rows.map(_.cededLoss)
-      case _       => rows.map(_.netLoss)
-    }
+    SiteTerms.basisLosses(rows, params.normalizedLossBasis)
 
   private def stormLoss(
       storm: Hurdat2Storm,
@@ -386,9 +385,9 @@ object Hurdat2PropertyCatPricingYltSimulator {
 
     val pp = params.pricingParameters
     val losses = portfolio.locations.map { loc =>
-      val siteWind = maxSiteWindKt(storm.track, loc, pp)
-      val groundUp = modeledGroundUpLoss(loc, siteWind, pp)
-      val insured = modeledInsuredLoss(loc, groundUp)
+      val siteWind = Windfield.maxSiteWindKt(storm.track, loc, pp)
+      val groundUp = Vulnerability.modeledGroundUpLoss(loc, siteWind, pp)
+      val insured = SiteTerms.modeledInsuredLoss(loc, groundUp)
       val ceded = math.max(0d, groundUp - insured)
       (siteWind, groundUp, ceded, insured)
     }
@@ -397,7 +396,7 @@ object Hurdat2PropertyCatPricingYltSimulator {
     val grossLoss = losses.iterator.map(_._2).sum
     val cededLoss = losses.iterator.map(_._3).sum
     val netLoss = losses.iterator.map(_._4).sum
-    val basis = selectedBasisValue(params.normalizedLossBasis, grossLoss, cededLoss, netLoss)
+    val basis = SiteTerms.selectedBasisValue(params.normalizedLossBasis, grossLoss, cededLoss, netLoss)
     if (basis <= 0d) {
       None
     } else {
@@ -417,98 +416,11 @@ object Hurdat2PropertyCatPricingYltSimulator {
     }
   }
 
-  private def selectedBasisValue(lossBasis: String, gross: Double, ceded: Double, net: Double): Double =
-    lossBasis match {
-      case "gross" => gross
-      case "ceded" => ceded
-      case _       => net
-    }
-
-  private def maxSiteWindKt(track: Vector[Hurdat2TrackPoint], loc: PropertyLocation, pp: PricingParameters): Double =
-    track
-      .iterator
-      .filter(point => tropicalStatus(point.status))
-      .map(point => attenuatedWindKt(point, loc, pp))
-      .foldLeft(0d)(_ max _)
-
-  private def tropicalStatus(status: String): Boolean = {
-    val s = Option(status).map(_.trim.toUpperCase).getOrElse("")
-    s == "TD" || s == "TS" || s == "HU" || s == "TY" || s == "ST" || s == "TC"
-  }
-
-  private def attenuatedWindKt(point: Hurdat2TrackPoint, loc: PropertyLocation, pp: PricingParameters): Double = {
-    val distanceKm = haversineKm(loc.latitude, loc.longitude, point.latitude, point.longitude)
-    val windRadiusKm =
-      point.windRadii34KtNm.map(avgRadiiNm).filter(_ > 0d).map(_ * pp.nauticalMileKm).getOrElse(pp.defaultWindRadiusKm)
-    val decayScaleKm = math.max(pp.minDecayScaleKm, windRadiusKm * pp.radiusToDecayScaleRatio)
-    val attenuation = math.exp(-distanceKm / decayScaleKm)
-    point.maxWindKt.toDouble * attenuation
-  }
-
-  private def avgRadiiNm(radii: canopy.data.hurdat2.Hurdat2WindRadii): Double = {
-    val values = Vector(radii.ne, radii.se, radii.sw, radii.nw).flatten.map(_.toDouble)
-    if (values.isEmpty) 0d else values.sum / values.size.toDouble
-  }
-
-  private def modeledGroundUpLoss(loc: PropertyLocation, siteWindKt: Double, pp: PricingParameters): Double = {
-    if (!supportsWindPeril(loc)) return 0d
-    if (siteWindKt < pp.minDamagingWindKt) return 0d
-
-    val span = pp.saturationWindKt - pp.minDamagingWindKt
-    val x = clamp01((siteWindKt - pp.minDamagingWindKt) / span)
-    val occupancyFactor = occupancyVulnerabilityFactor(loc.occupancy, pp)
-    val perilFactor = perilExposureFactor(loc.perilSet, pp)
-    val vulnerabilityRatio = clamp01(math.pow(x, pp.vulnerabilityExponent) * occupancyFactor * perilFactor)
-    loc.tiv * vulnerabilityRatio
-  }
-
-  private def supportsWindPeril(loc: PropertyLocation): Boolean = {
-    if (loc.perilSet.isEmpty) true
-    else loc.perilSet.exists { peril =>
-      val p = peril.trim.toUpperCase
-      p.contains("WIND") || p.contains("TC") || p.contains("HURRICANE") || p.contains("STORM")
-    }
-  }
-
-  private def perilExposureFactor(perils: Vector[String], pp: PricingParameters): Double = {
-    if (perils.isEmpty) pp.perilFactorWind
-    else if (perils.exists(_.toUpperCase.contains("STORM_SURGE"))) pp.perilFactorStormSurge
-    else if (perils.exists(_.toUpperCase.contains("WIND"))) pp.perilFactorWind
-    else pp.perilFactorOther
-  }
-
-  private def occupancyVulnerabilityFactor(occupancy: Option[String], pp: PricingParameters): Double =
-    occupancy.map(_.trim.toLowerCase) match {
-      case Some(value) if value.contains("industrial")  => pp.occupancyFactorIndustrial
-      case Some(value) if value.contains("hospitality") => pp.occupancyFactorHospitality
-      case Some(value) if value.contains("residential") => pp.occupancyFactorResidential
-      case Some(value) if value.contains("commercial")  => pp.occupancyFactorCommercial
-      case _                                            => pp.occupancyFactorDefault
-    }
-
-  private def modeledInsuredLoss(loc: PropertyLocation, groundUpLoss: Double): Double = {
-    if (groundUpLoss <= 0d) return 0d
-    val deductible = math.max(0d, loc.deductible)
-    val limit = math.max(0d, if (loc.limit > 0d) loc.limit else loc.tiv)
-    math.min(limit, math.max(0d, groundUpLoss - deductible))
-  }
-
   private def contiguousYears(dataset: Hurdat2Dataset): Vector[Int] = {
     dataset.years match {
       case Vector() => Vector.empty
       case years    => (years.min to years.max).toVector
     }
-  }
-
-  private def haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double = {
-    val r = 6371.0088d
-    val dLat = math.toRadians(lat2 - lat1)
-    val dLon = math.toRadians(lon2 - lon1)
-    val a =
-      math.pow(math.sin(dLat / 2d), 2d) +
-        math.cos(math.toRadians(lat1)) * math.cos(math.toRadians(lat2)) * math.pow(math.sin(dLon / 2d), 2d)
-    val c = 2d * math.atan2(math.sqrt(a), math.sqrt(1d - a))
-    r * c
   }
 
   private def quantile(sorted: Vector[Double], p: Double): Double = {
