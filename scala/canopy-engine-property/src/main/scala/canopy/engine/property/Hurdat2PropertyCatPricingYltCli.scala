@@ -418,6 +418,52 @@ object Hurdat2PropertyCatPricingYltCli {
     )
     pricingOutput("rainierCalibration") = rainierCalibrationJson(runInput, calibrationAttempt)
 
+    // Phase 3.10: TVaR at each configured return period. Always emitted
+    // alongside OEP/AEP so downstream consumers can render the full
+    // tail-severity triplet.
+    if (result.tvarByReturnPeriod.nonEmpty) {
+      pricingOutput("tvarByReturnPeriod") = ujson.Arr.from(result.tvarByReturnPeriod.map { case (rp, v) =>
+        ujson.Obj(
+          "returnPeriodYears" -> ujson.Num(rp),
+          "tvar" -> ujson.Num(round(v, 2))
+        )
+      })
+    }
+
+    // Phase 3.11: per-layer technical premium + per-year attachment /
+    // exhaustion flags. Only present when the run configured a layer
+    // tower; absent otherwise (so the "no cession" case doesn't emit
+    // empty arrays).
+    if (result.layerPremiums.nonEmpty) {
+      pricingOutput("layerPremiums") = ujson.Arr.from(result.layerPremiums.map { p =>
+        ujson.Obj(
+          "layerName" -> ujson.Str(p.layerName),
+          "pureLoss" -> ujson.Num(round(p.pureLoss, 2)),
+          "stdDevLoss" -> ujson.Num(round(p.stdDevLoss, 2)),
+          "riskLoadedPremium" -> ujson.Num(round(p.riskLoadedPremium, 2)),
+          "brokerage" -> ujson.Num(round(p.brokerage, 2)),
+          "profitCommission" -> ujson.Num(round(p.profitCommission, 2)),
+          "grossTechnicalPremium" -> ujson.Num(round(p.grossTechnicalPremium, 2)),
+          "rateOnLine" -> ujson.Num(round(p.rateOnLine))
+        )
+      })
+    }
+
+    if (result.layerOutcomes.nonEmpty) {
+      // Aggregate-level flags: a year breached the tower if ANY layer's
+      // attachment was reached, and the tower is exhausted if ALL layers
+      // were exhausted (underwriter-facing "program ran out of cover").
+      val aggregateOutcomes = result.layerOutcomes.zipWithIndex.map { case (yearLayers, _) =>
+        val anyAttached = yearLayers.exists(_.attachmentReached)
+        val allExhausted = yearLayers.forall(_.exhausted)
+        (anyAttached, allExhausted)
+      }
+      val attachmentFreq = aggregateOutcomes.count(_._1).toDouble / aggregateOutcomes.size.toDouble
+      val exhaustionFreq = aggregateOutcomes.count(_._2).toDouble / aggregateOutcomes.size.toDouble
+      pricingOutput("layerAttachmentFrequency") = ujson.Num(round(attachmentFreq))
+      pricingOutput("layerExhaustionFrequency") = ujson.Num(round(exhaustionFreq))
+    }
+
     // Expose the phase-2.8 enrichment log so underwriters can see which
     // portfolio fields were filled in by defaults.
     if (enrichmentLog.entries.nonEmpty) {

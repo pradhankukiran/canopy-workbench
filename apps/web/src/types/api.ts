@@ -280,6 +280,30 @@ export interface PropertyCatPricingYltOutput {
   yearLossTable?: unknown[];
   rows?: unknown[];
   ylt?: unknown[];
+  // Phase 3: technical-premium surface (present when a layer tower is
+  // configured on the run).
+  layerPremiums?: Array<{
+    layerName?: string;
+    pureLoss?: number;
+    stdDevLoss?: number;
+    riskLoadedPremium?: number;
+    brokerage?: number;
+    profitCommission?: number;
+    grossTechnicalPremium?: number;
+    rateOnLine?: number;
+  }>;
+  tvarByReturnPeriod?: Array<{
+    returnPeriodYears?: number;
+    tvar?: number;
+  }>;
+  layerAttachmentFrequency?: number;
+  layerExhaustionFrequency?: number;
+  enrichmentLog?: Array<{
+    locationId?: string;
+    field?: string;
+    assumedValue?: string;
+    reason?: string;
+  }>;
   [key: string]: unknown;
 }
 
