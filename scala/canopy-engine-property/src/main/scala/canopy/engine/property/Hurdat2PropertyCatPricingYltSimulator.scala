@@ -105,6 +105,11 @@ object Hurdat2PropertyCatPricingYltSimulator {
       // aggregate-net == aggregate-gross in that case.
       layerTower: canopy.engine.property.financial.LayerTower =
         canopy.engine.property.financial.LayerTower.empty,
+      // Phase 3.9/3.10: technical-premium terms applied per layer.
+      // Default shape: pure + 0.25 * sigma + 5% brokerage, no profit
+      // commission. Callers override via PricingParameters copy.
+      premiumTerms: canopy.engine.property.financial.PremiumTerms =
+        canopy.engine.property.financial.PremiumTerms(),
       // Legacy single power-curve params (used when useHazusCurves=false).
       minDamagingWindKt: Double = 35d,
       saturationWindKt: Double = 130d,
@@ -285,7 +290,12 @@ object Hurdat2PropertyCatPricingYltSimulator {
       // Outer index = simulated year (matches simulatedYears order);
       // inner index = layer (matches params.pricingParameters.layerTower).
       // Empty when no layer tower is configured.
-      layerOutcomes: Vector[Vector[canopy.engine.property.financial.LayerYearOutcome]] = Vector.empty
+      layerOutcomes: Vector[Vector[canopy.engine.property.financial.LayerYearOutcome]] = Vector.empty,
+      // Phase 3.9/3.10: technical premium per layer.
+      layerPremiums: Vector[canopy.engine.property.financial.LayerPremium] = Vector.empty,
+      // Phase 3.10: TVaR at each configured return period, for the
+      // selected loss basis of the run. Maps RP -> TVaR(RP).
+      tvarByReturnPeriod: Vector[(Int, Double)] = Vector.empty
   )
 
   def simulate(
@@ -306,6 +316,19 @@ object Hurdat2PropertyCatPricingYltSimulator {
       if (tower.isEmpty) Vector.empty
       else simulatedYears.map(y => canopy.engine.property.financial.LayerTower.runYear(tower, y.eventNetLosses))
 
+    val layerPremiums =
+      if (tower.isEmpty) Vector.empty
+      else canopy.engine.property.financial.TechnicalPremium.priceTower(
+        tower,
+        layerOutcomes,
+        params.pricingParameters.premiumTerms
+      )
+
+    val tvarByRp = canopy.engine.property.financial.TechnicalPremium.tvarCurve(
+      basisLosses(simulatedYears, params),
+      params.normalizedReturnPeriodsYears
+    )
+
     Result(
       params = params,
       portfolio = normalizedPortfolio,
@@ -314,7 +337,9 @@ object Hurdat2PropertyCatPricingYltSimulator {
       simulatedYears = simulatedYears,
       riskMetrics = riskMetrics,
       summaryStats = summaryStats,
-      layerOutcomes = layerOutcomes
+      layerOutcomes = layerOutcomes,
+      layerPremiums = layerPremiums,
+      tvarByReturnPeriod = tvarByRp
     )
   }
 
