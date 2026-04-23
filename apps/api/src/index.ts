@@ -16,6 +16,11 @@ import {
   type UploadRecord,
   RedisStateStore
 } from "./state";
+import {
+  extractEmbeddedPropertyPortfolio,
+  validatePropertyPortfolio,
+  type ValidationFailure
+} from "./validation";
 
 interface CreateUploadBody {
   workspaceId?: unknown;
@@ -85,6 +90,17 @@ function asObject(value: unknown): Record<string, unknown> | undefined {
 
 function apiError(message: string, code = "api_error"): { error: { code: string; message: string } } {
   return { error: { code, message } };
+}
+
+function summarizeViolations(
+  errors: ValidationFailure[],
+  maxReported = 20
+): Array<{ path: string; message: string; keyword: string }> {
+  return errors.slice(0, maxReported).map((e) => ({
+    path: e.path,
+    message: e.message,
+    keyword: e.keyword
+  }));
 }
 
 function sanitizeFilename(filename: string): string {
@@ -339,6 +355,22 @@ async function main(): Promise<void> {
           "unsupported_analysis_type"
         )
       );
+    }
+
+    if (analysisType === "pricing") {
+      const embeddedPortfolio = extractEmbeddedPropertyPortfolio(input);
+      if (embeddedPortfolio !== undefined) {
+        const result = validatePropertyPortfolio(embeddedPortfolio);
+        if (!result.ok) {
+          return reply.code(400).send({
+            error: {
+              code: "invalid_property_portfolio",
+              message: "Embedded property portfolio did not validate against the v2 schema.",
+              violations: summarizeViolations(result.errors)
+            }
+          });
+        }
+      }
     }
 
     const jobId = newId("job");

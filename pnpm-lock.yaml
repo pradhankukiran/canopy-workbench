@@ -20,6 +20,12 @@ importers:
       '@fastify/cors':
         specifier: ^10.1.0
         version: 10.1.0
+      ajv:
+        specifier: ^8.17.1
+        version: 8.18.0
+      ajv-formats:
+        specifier: ^3.0.1
+        version: 3.0.1(ajv@8.18.0)
       bullmq:
         specifier: ^5.63.0
         version: 5.70.1
