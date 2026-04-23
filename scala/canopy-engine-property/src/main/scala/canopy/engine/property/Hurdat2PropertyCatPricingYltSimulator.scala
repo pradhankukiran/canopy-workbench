@@ -94,6 +94,12 @@ object Hurdat2PropertyCatPricingYltSimulator {
       // deterministic point MDRs from Hazus.
       useSecondaryUncertainty: Boolean = true,
       secondaryUncertaintyCv: Double = 0.35d,
+      // Phase 3.3: event-level loss perturbation. Each sampled event is
+      // scaled by a mean-1 lognormal multiplier with sigma below, adding
+      // tail uncertainty without changing expected loss. Disabling
+      // reverts to using each historical event's loss exactly.
+      useEventPerturbation: Boolean = true,
+      eventPerturbationSigma: Double = 0.30d,
       // Legacy single power-curve params (used when useHazusCurves=false).
       minDamagingWindKt: Double = 35d,
       saturationWindKt: Double = 130d,
@@ -382,7 +388,7 @@ object Hurdat2PropertyCatPricingYltSimulator {
     val rng = new Random(params.randomSeed.toLong)
     val historicalEvents = historicalYears.flatMap(_.events)
     val lambda = FrequencyModel.fitLambda(historicalYears.map(_.eventCount))
-    EventBootstrap.simulate(historicalEvents, lambda, params.normalizedSimulatedYears, rng)
+    EventBootstrap.simulate(historicalEvents, lambda, params.normalizedSimulatedYears, rng, params.pricingParameters)
   }
 
   private def computeRiskMetrics(

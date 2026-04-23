@@ -1,6 +1,6 @@
 package canopy.engine.property.ylt
 
-import canopy.engine.property.Hurdat2PropertyCatPricingYltSimulator.{EventLoss, SimulatedYearLoss}
+import canopy.engine.property.Hurdat2PropertyCatPricingYltSimulator.{EventLoss, PricingParameters, SimulatedYearLoss}
 
 import scala.util.Random
 
@@ -29,7 +29,8 @@ object EventBootstrap {
       historicalEvents: Vector[EventLoss],
       lambda: Double,
       numYears: Int,
-      rng: Random
+      rng: Random,
+      pp: PricingParameters = PricingParameters.default
   ): Vector[SimulatedYearLoss] = {
     if (historicalEvents.isEmpty || numYears <= 0) return Vector.empty
 
@@ -37,7 +38,8 @@ object EventBootstrap {
     Vector.tabulate(numYears) { idx =>
       val eventCount = FrequencyModel.poisson(lambda, rng)
       val events = Vector.tabulate(eventCount) { _ =>
-        historicalEvents(rng.nextInt(poolSize))
+        val raw = historicalEvents(rng.nextInt(poolSize))
+        if (pp.useEventPerturbation) EventPerturbation.perturb(raw, rng, pp.eventPerturbationSigma) else raw
       }
       val grossLoss = events.iterator.map(_.grossLoss).sum
       val cededLoss = events.iterator.map(_.cededLoss).sum
