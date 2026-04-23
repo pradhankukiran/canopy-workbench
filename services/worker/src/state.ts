@@ -124,8 +124,11 @@ export interface RunResultRecord {
     bondExhausted: boolean;
   }>;
   diagnostics: {
-    rHatMax: number;
-    essMin: number;
+    status?: "converged" | "skipped" | "no_mcmc_diagnostics" | "failed";
+    rHatMax?: number;
+    essMin?: number;
+    reason?: string;
+    source?: string;
   };
   moduleOutputs?: RunModuleOutputsRecord;
   artifacts?: {

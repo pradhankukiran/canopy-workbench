@@ -702,13 +702,28 @@ function normalizeDiagnostics(
   fallback: RunResultRecord["diagnostics"]
 ): RunResultRecord["diagnostics"] {
   const record = asRecord(value);
-  return {
-    rHatMax: roundTo(
-      Math.max(1, asNumber(record?.rHatMax) ?? asNumber(record?.rhatMax) ?? fallback.rHatMax),
-      4
-    ),
-    essMin: Math.max(1, roundInt(asNumber(record?.essMin) ?? fallback.essMin))
-  };
+  if (!record) {
+    return fallback;
+  }
+
+  const status = asString(record.status);
+  const reason = asString(record.reason);
+  const source = asString(record.source);
+  const rHatRaw = asNumber(record.rHatMax) ?? asNumber(record.rhatMax);
+  const essRaw = asNumber(record.essMin);
+
+  const diagnostics: RunResultRecord["diagnostics"] = {};
+  if (status) diagnostics.status = status as RunResultRecord["diagnostics"]["status"];
+  if (reason) diagnostics.reason = reason;
+  if (source) diagnostics.source = source;
+  if (rHatRaw !== undefined && Number.isFinite(rHatRaw)) {
+    diagnostics.rHatMax = roundTo(Math.max(1, rHatRaw), 4);
+  }
+  if (essRaw !== undefined && Number.isFinite(essRaw)) {
+    diagnostics.essMin = Math.max(1, roundInt(essRaw));
+  }
+
+  return diagnostics;
 }
 
 function normalizeArtifacts(
@@ -860,7 +875,10 @@ function mergeBundleLikeScalaResult(params: {
       attachmentProbability: 0, exhaustionProbability: 0, var99: 0, tvar99: 0, oep: [], aep: []
     }),
     yearOutcomes: normalizeYearOutcomes(yearOutcomes, []),
-    diagnostics: normalizeDiagnostics(diagnostics, { rHatMax: 1, essMin: 1 }),
+    diagnostics: normalizeDiagnostics(diagnostics, {
+      status: "skipped",
+      reason: "engine output did not include a diagnostics object"
+    }),
     ...(moduleOutputs ? { moduleOutputs } : {}),
     ...(artifacts ? { artifacts } : {})
   };
@@ -982,7 +1000,7 @@ function coerceScalaIlsCliResultToRunResult(params: {
       attachmentProbability: 0, exhaustionProbability: 0, var99: 0, tvar99: 0, oep: [], aep: []
     },
     yearOutcomes: [],
-    diagnostics: { rHatMax: 1, essMin: 1 }
+    diagnostics: { status: "skipped", reason: "fallback skeleton before engine output" }
   };
 
   for (const record of records) {

@@ -429,19 +429,41 @@ object Hurdat2PropertyCatPricingYltCli {
   private def diagnosticsJson(
       calibration: Option[MpiRainierCalibrator.Output],
       result: Result
-  ): ujson.Obj =
-    calibration.flatMap(_.diagnostics) match {
-      case Some(d) =>
-        ujson.Obj(
-          "rHatMax" -> ujson.Num(round(d.rHatMax)),
-          "essMin" -> ujson.Num(round(d.essMin, 2))
-        )
+  ): ujson.Obj = {
+    // Honest diagnostics: emit real MCMC R-hat / ESS only when the Rainier
+    // sampler actually produced them. Previously this path fabricated
+    // rHatMax=1.0 and a synthetic essMin whenever calibration was skipped
+    // (no Rainier run, sampler fallback, or too few observed rates), which
+    // presented users with "converged" diagnostics for an MCMC that never
+    // executed. Real per-quantile posterior diagnostics land in phase 4.
+    val _ = result
+    calibration match {
+      case Some(output) =>
+        output.diagnostics match {
+          case Some(d) =>
+            ujson.Obj(
+              "status" -> ujson.Str("converged"),
+              "rHatMax" -> ujson.Num(round(d.rHatMax)),
+              "essMin" -> ujson.Num(round(d.essMin, 2)),
+              "source" -> ujson.Str("rainier-mcmc")
+            )
+          case None =>
+            ujson.Obj(
+              "status" -> ujson.Str("no_mcmc_diagnostics"),
+              "reason" -> ujson.Str(
+                "Rainier calibration ran a non-MCMC path (deterministic fallback or insufficient observed history) so no R-hat/ESS are available."
+              )
+            )
+        }
       case None =>
         ujson.Obj(
-          "rHatMax" -> ujson.Num(1.0),
-          "essMin" -> ujson.Num(math.max(500, result.simulatedYears.size))
+          "status" -> ujson.Str("skipped"),
+          "reason" -> ujson.Str(
+            "Rainier calibration was not applied for this run (disabled, failed, or not requested)."
+          )
         )
     }
+  }
 
   private def scaleSimulatedYears(
       rows: Vector[Hurdat2PropertyCatPricingYltSimulator.SimulatedYearLoss],
