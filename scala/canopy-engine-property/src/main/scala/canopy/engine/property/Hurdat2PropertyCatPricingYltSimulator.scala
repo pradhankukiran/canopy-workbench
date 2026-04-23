@@ -4,6 +4,7 @@ import canopy.data.hurdat2.{Hurdat2Dataset, Hurdat2Storm}
 import canopy.engine.property.financial.SiteTerms
 import canopy.engine.property.hazard.{StormSurge, Windfield}
 import canopy.engine.property.vulnerability.Vulnerability
+import canopy.engine.property.ylt.{EventBootstrap, FrequencyModel}
 
 import scala.util.Random
 
@@ -205,7 +206,15 @@ object Hurdat2PropertyCatPricingYltSimulator {
       eventCount: Int,
       grossLoss: Double,
       cededLoss: Double,
-      netLoss: Double
+      netLoss: Double,
+      // Phase 3.1: peak single-event loss within this simulated year.
+      // Needed so OEP (occurrence exceedance probability) can be derived
+      // from the distribution of per-year maxima rather than hand-waved
+      // via the aepScale hack. Defaulted to 0 for backwards source
+      // compatibility with any external Params constructor.
+      maxEventGrossLoss: Double = 0d,
+      maxEventNetLoss: Double = 0d,
+      maxEventCededLoss: Double = 0d
   )
 
   final case class ReturnPeriodPoint(
@@ -364,19 +373,16 @@ object Hurdat2PropertyCatPricingYltSimulator {
     }
   }
 
+  /** Phase 3.1: replace whole-year bootstrap with event-level sampling.
+    * Fit a Poisson rate lambda from historical annual event counts, then
+    * for each simulated year draw N ~ Poisson(lambda) events from the
+    * historical pool. Falls back to an empty result when the historical
+    * catalog has no events at all. */
   private def simulateYears(historicalYears: Vector[HistoricalYearLoss], params: Params): Vector[SimulatedYearLoss] = {
     val rng = new Random(params.randomSeed.toLong)
-    Vector.tabulate(params.normalizedSimulatedYears) { idx =>
-      val source = historicalYears(rng.nextInt(historicalYears.size))
-      SimulatedYearLoss(
-        yearIndex = idx + 1,
-        sourceYear = source.sourceYear,
-        eventCount = source.eventCount,
-        grossLoss = source.grossLoss,
-        cededLoss = source.cededLoss,
-        netLoss = source.netLoss
-      )
-    }
+    val historicalEvents = historicalYears.flatMap(_.events)
+    val lambda = FrequencyModel.fitLambda(historicalYears.map(_.eventCount))
+    EventBootstrap.simulate(historicalEvents, lambda, params.normalizedSimulatedYears, rng)
   }
 
   private def computeRiskMetrics(
@@ -408,15 +414,28 @@ object Hurdat2PropertyCatPricingYltSimulator {
     val exhaustionProbability =
       if (exhaustionThreshold <= 0d) 0d else basis.count(_ >= exhaustionThreshold).toDouble / n.toDouble
 
-    def curvePoints(
+    // Phase 3: derive OEP and AEP from distinct series.
+    //   OEP (occurrence exceedance probability) is the quantile of the
+    //        per-year MAXIMUM-SINGLE-EVENT loss distribution. What is
+    //        the worst single event in the 100-year return-period year?
+    //   AEP (aggregate exceedance probability) is the quantile of the
+    //        per-year AGGREGATE (sum-of-events) loss distribution. What
+    //        is the worst total annual loss at the same return period?
+    // AEP >= OEP for the same RP because aggregating over events
+    // within a year cannot lower the peak; the phase-1 "AEP = 0.94 *
+    // OEP" hack inverted this relationship and is now deleted.
+    val maxGross = simulatedYears.map(_.maxEventGrossLoss)
+    val maxNet = simulatedYears.map(_.maxEventNetLoss)
+    val maxCeded = simulatedYears.map(_.maxEventCededLoss)
+
+    def quantileCurve(
         grossSeries: Vector[Double],
         netSeries: Vector[Double],
-        cededSeries: Vector[Double],
-        scale: Double
+        cededSeries: Vector[Double]
     ): Vector[ReturnPeriodPoint] = {
-      val sg = grossSeries.map(_ * scale).sorted
-      val sn = netSeries.map(_ * scale).sorted
-      val sc = cededSeries.map(_ * scale).sorted
+      val sg = grossSeries.sorted
+      val sn = netSeries.sorted
+      val sc = cededSeries.sorted
       params.normalizedReturnPeriodsYears.map { rp =>
         val p = 1d - (1d / rp.toDouble.max(1d))
         ReturnPeriodPoint(
@@ -437,8 +456,8 @@ object Hurdat2PropertyCatPricingYltSimulator {
       exhaustionProbability = exhaustionProbability,
       var99 = var99,
       tvar99 = tvar99,
-      oep = curvePoints(gross, net, ceded, 1d),
-      aep = curvePoints(gross, net, ceded, pp.aepScale)
+      oep = quantileCurve(maxGross, maxNet, maxCeded),
+      aep = quantileCurve(gross, net, ceded)
     )
   }
 

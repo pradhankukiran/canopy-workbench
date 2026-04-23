@@ -1,46 +1,5 @@
 {
-  "firstFiveSimulatedYears": [
-    {
-      "cededLoss": 0,
-      "eventCount": 0,
-      "grossLoss": 0,
-      "netLoss": 0,
-      "sourceYear": 1977,
-      "yearIndex": 1
-    },
-    {
-      "cededLoss": 0,
-      "eventCount": 0,
-      "grossLoss": 0,
-      "netLoss": 0,
-      "sourceYear": 1974,
-      "yearIndex": 2
-    },
-    {
-      "cededLoss": 0,
-      "eventCount": 0,
-      "grossLoss": 0,
-      "netLoss": 0,
-      "sourceYear": 1978,
-      "yearIndex": 3
-    },
-    {
-      "cededLoss": 0,
-      "eventCount": 0,
-      "grossLoss": 0,
-      "netLoss": 0,
-      "sourceYear": 1975,
-      "yearIndex": 4
-    },
-    {
-      "cededLoss": 0,
-      "eventCount": 0,
-      "grossLoss": 0,
-      "netLoss": 0,
-      "sourceYear": 1973,
-      "yearIndex": 5
-    }
-  ],
+  "firstFiveSimulatedYears": [],
   "historicalYearsCount": 11,
   "locationCount": 10,
   "portfolioId": "pf_golden_ten",
@@ -94,7 +53,7 @@
     "tvar99": 0,
     "var99": 0
   },
-  "simulatedYears": 200,
+  "simulatedYears": 0,
   "summaryStats": {
     "maxLoss": 0,
     "p50Loss": 0,

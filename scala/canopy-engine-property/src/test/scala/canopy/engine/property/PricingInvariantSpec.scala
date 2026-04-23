@@ -141,19 +141,21 @@ class PricingInvariantSpec extends AnyFunSuite with ScalaCheckPropertyChecks {
     }
   }
 
-  test("invariant: AEP at every return period is less than or equal to OEP (current model)") {
-    // In the current phase-1 model AEP = OEP * aepScale with aepScale < 1,
-    // so AEP <= OEP is tautological by construction. Phase 3 replaces this
-    // with a real aggregate/occurrence derivation and the invariant changes
-    // direction - AEP(p) >= OEP(p) because aggregating multiple events in a
-    // year cannot lower the quantile. Pinning the current direction here
-    // guards against silent drift during the transition.
+  test("invariant: AEP >= OEP at every return period") {
+    // With phase-3 event-level bootstrap, OEP is the quantile of the
+    // per-year max-single-event loss and AEP is the quantile of the
+    // per-year aggregate loss. Summing events within a year cannot
+    // reduce the peak, so AEP(p) >= OEP(p). This is the actuarially
+    // correct direction of the inequality and flips the phase-1
+    // invariant (which held under the fake 0.94 scale). A regression
+    // that reverses this relationship indicates a bug in the catalog
+    // sampler.
     forAll { (portfolio: PropertyPortfolio, dataset: Hurdat2Dataset, params: Params) =>
       val result = Hurdat2PropertyCatPricingYltSimulator.simulate(dataset, portfolio, params)
       val zipped = result.riskMetrics.oep.zip(result.riskMetrics.aep)
       zipped.foreach { case (oep, aep) =>
-        assert(aep.grossLoss <= oep.grossLoss + 1e-6)
-        assert(aep.netLoss <= oep.netLoss + 1e-6)
+        assert(aep.grossLoss >= oep.grossLoss - 1e-6, s"AEP(${aep.returnPeriodYears}) ${aep.grossLoss} < OEP ${oep.grossLoss}")
+        assert(aep.netLoss >= oep.netLoss - 1e-6)
       }
     }
   }
