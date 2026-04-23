@@ -45,10 +45,16 @@ class BaselineGoldenSpec extends AnyFunSuite {
     randomSeed = 42
   )
 
-  private def trackPoint(lat: Double, lon: Double, windKt: Int, year: Int): Hurdat2TrackPoint =
+  private def trackPoint(
+      lat: Double,
+      lon: Double,
+      windKt: Int,
+      year: Int,
+      hour: Int
+  ): Hurdat2TrackPoint =
     Hurdat2TrackPoint(
       date = LocalDate.of(year, 9, 1),
-      time = LocalTime.NOON,
+      time = LocalTime.of(hour, 0),
       recordIdentifier = None,
       status = "HU",
       latitude = lat,
@@ -64,9 +70,11 @@ class BaselineGoldenSpec extends AnyFunSuite {
     Hurdat2Storm(
       header = Hurdat2StormHeader(Hurdat2StormId(f"AL$seq%02d$year", "AL", seq, year), s"GOLD$seq", 3),
       track = Vector(
-        trackPoint(28.0, -92.0, wind, year),
-        trackPoint(29.5, -90.5, wind, year),
-        trackPoint(31.0, -89.0, math.max(35, wind - 20), year)
+        // 6-hour-spaced fixes so translation-asymmetry has real dt to work
+        // with. Track moves NNE at ~15 kt, typical of Gulf landfalls.
+        trackPoint(28.0, -92.0, wind, year, hour = 0),
+        trackPoint(29.5, -90.5, wind, year, hour = 6),
+        trackPoint(31.0, -89.0, math.max(35, wind - 20), year, hour = 12)
       )
     )
 

@@ -27,6 +27,15 @@ object Hurdat2PropertyCatPricingYltSimulator {
       // false, the phase-1 exponential-decay fallback is used. Phase 2.3
       // replaces the climatology with Willoughby 2006.
       useHollandWindfield: Boolean = true,
+      // Phase 2.4: translation-asymmetry correction. When enabled, adds
+      // k * V_trans * sin(bearing - heading) to the symmetric Holland
+      // wind, producing right-of-track bias in NH and left-of-track in
+      // SH (Schwerdt 1979). The coefficient k=0.55 is the common value
+      // for SPH work; the translation speed is clamped to avoid spurious
+      // spikes from bad track data.
+      useTranslationAsymmetry: Boolean = true,
+      translationAsymmetryK: Double = 0.55d,
+      translationMaxKt: Double = 40d,
       rmaxFromR34Factor: Double = 0.35d,
       // Rmax climatology. "willoughby2006" uses Willoughby, Darling & Rahn
       // 2006:  Rmax = 46.4 * exp(-0.0155 V_max_ms + 0.0169 |lat|) - the
