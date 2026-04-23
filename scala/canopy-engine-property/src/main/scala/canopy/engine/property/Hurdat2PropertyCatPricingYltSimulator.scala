@@ -28,6 +28,12 @@ object Hurdat2PropertyCatPricingYltSimulator {
       // replaces the climatology with Willoughby 2006.
       useHollandWindfield: Boolean = true,
       rmaxFromR34Factor: Double = 0.35d,
+      // Rmax climatology. "willoughby2006" uses Willoughby, Darling & Rahn
+      // 2006:  Rmax = 46.4 * exp(-0.0155 V_max_ms + 0.0169 |lat|) - the
+      // default since it matches observed Atlantic vortex geometry better
+      // than the linear fit. "linear" uses the simple V_max climatology
+      // (intercept - slope * V_max_kt) that phase 2.2 shipped with.
+      rmaxFormula: String = "willoughby2006",
       rmaxClimatologyInterceptKm: Double = 45d,
       rmaxClimatologySlopeKmPerKt: Double = 0.2d,
       rmaxMinKm: Double = 15d,
